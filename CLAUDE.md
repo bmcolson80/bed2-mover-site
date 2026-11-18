@@ -1,8 +1,9 @@
 # bed2-mover-site
 
-Drum kit mover tool for Brendan's Bed 2 studio renovation (112 The Gateway, Lilydale). Published at
+Drum kit mover tool for Brendan's Bed 2 studio renovation. Published at
 https://bmcolson80.github.io/bed2-mover-site/ (GitHub Pages, branch `main`, folder `/`). This repo is public: never
-commit house details beyond the plan SVGs, and never commit context files, credentials or documents.
+commit house details (including the address) beyond the plan SVGs, and never commit context files, credentials or
+documents.
 
 ## How it works
 - `plans/` holds the plan SVGs. They mirror the layout of the `Studio Build` folder on Brendan's Mac. The path
