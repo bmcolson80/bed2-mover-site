@@ -15,6 +15,16 @@ documents.
 - The designs themselves are made in the Claude chat project "Home Renovations" (generator scripts in
   `Studio Build/Bed2 DESIGN/`), not here. This repo only consumes their SVGs.
 
+## Wall builder (v4 of the tool, 18 Nov 2026)
+- On BASE PLAN v2 and v3 only, the panel's "Studio walls" section draws concept wall layers over the plan: dividing wall from the
+  laundry end, then window, ensuite and living room walls built from their existing face into the studio (Soundchek sheets 13,
+  stud 90, air gap 25 or 50, optional second stud wall), a doorway on the living room wall (one door swings in; with a second stud
+  wall the outer door swings out; hinged on the ensuite side), plus ceiling fan and ventilation placeholders. All widths are editable.
+- The kit fit check uses the studio clear area those layers produce. Existing studio walls are shown as stud with faces unchanged.
+- Plan geometry is read from the plan's `clipPath id="room"` polygon and hard-coded v2/v3 constants (2440 step line, 112 walls,
+  window 1 position); a new base plan with different geometry needs those checked in `drawWalls()`.
+- Match plan names case-insensitively (the files are named "BASE plan v2").
+
 ## Adding a design
 1. SVG named `Bed2 DESIGN vN plan.svg`, in `plans/Bed2 DESIGN/` (superseded ones move to `plans/Bed2 DESIGN/archive/`).
 2. It must contain `<clipPath id="room"><polygon points="...">` or the build skips it, and should end with
