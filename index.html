@@ -39,10 +39,11 @@
 <body>
 <header>
   <h1>Bed 2 – Drum kit positioning tool v5 (concept, unconfirmed)</h1>
-  <p>Pick BASE PLAN v2 (today) or v3 (option) underneath and set the walls, fan and ventilation in the options, then drag the shaded box to move it and the round handle to rotate. The kit keeps its position (mm from the window and back walls) when you switch plans, so you can compare. 1:25 when printed at A3.</p>
+  <p>Pick BASE PLAN v2 (today) or v3 (option) underneath and set the walls, fan and ventilation in the options, then drag the shaded box to move it and the round handle to rotate. The kit keeps its position (mm from the window and back walls) when you switch plans, so you can compare. 1:25 when printed at A3. Pinch (or ctrl + scroll) zooms the diagram only; drag the background to pan when zoomed.</p>
 </header>
 <div class="wrap">
-  <div class="plan">
+  <div class="plan" style="position:relative">
+    <button id="zoomReset" style="display:none;position:absolute;top:8px;right:8px;z-index:2" title="Back to the full diagram">Reset zoom</button>
 <svg id="plan" xmlns="http://www.w3.org/2000/svg" viewBox="22 46 225 286" font-family="Helvetica, Arial, sans-serif">
 <g id="baseplan"></g>
 <defs>
@@ -448,10 +449,64 @@
       if (b.x >= cx - half && b.x + b.width <= cx + half && b.y >= cy - half && b.y + b.height <= cy + half) { els[i].style.display = 'none'; hiddenSvc.push(els[i]); }
     }
   }
-  function setViewBox(ext){
+  var mode = null;
+  var ZV = { s: 1, fx: 0.5, fy: 0.5 }, lastExt = false;   // diagram zoom only (the page and settings keep their size)
+  function baseBox(){
     var v = cur.vb;
-    svg.setAttribute('viewBox', ext ? ((v[0] - 20) + ' ' + v[1] + ' ' + (v[2] + 20) + ' ' + (v[3] + 22)) : (v[0] + ' ' + v[1] + ' ' + v[2] + ' ' + v[3]));
+    return lastExt ? [v[0] - 20, v[1], v[2] + 20, v[3] + 22] : [v[0], v[1], v[2], v[3]];
   }
+  function applyView(){
+    var b = baseBox(), w = b[2] / ZV.s, h = b[3] / ZV.s;
+    ZV.fx = Math.min(1 - w / b[2] / 2, Math.max(w / b[2] / 2, ZV.fx)); ZV.fy = Math.min(1 - h / b[3] / 2, Math.max(h / b[3] / 2, ZV.fy));
+    svg.setAttribute('viewBox', (b[0] + ZV.fx * b[2] - w / 2).toFixed(3) + ' ' + (b[1] + ZV.fy * b[3] - h / 2).toFixed(3) + ' ' + w.toFixed(3) + ' ' + h.toFixed(3));
+    var zb = $('zoomReset'); if (zb) zb.style.display = ZV.s > 1.01 ? '' : 'none';
+  }
+  function setViewBox(ext){ lastExt = !!ext; applyView(); }
+  function zoomAt(factor, px, py){            // px, py = point in svg user units to keep fixed
+    var b = baseBox(), ns = Math.min(8, Math.max(1, ZV.s * factor));
+    var v = svg.viewBox.baseVal, ox = (px - v.x) / v.width, oy = (py - v.y) / v.height;   // fraction of the current view
+    var w = b[2] / ns, h = b[3] / ns;
+    ZV.s = ns; ZV.fx = (px - ox * w + w / 2 - b[0]) / b[2]; ZV.fy = (py - oy * h + h / 2 - b[1]) / b[3];
+    applyView();
+  }
+  var ptrs = {}, pinch = null, panning = null;
+  function ptrCount(){ return Object.keys(ptrs).length; }
+  function svgPt(x, y){ var pt = svg.createSVGPoint(); pt.x = x; pt.y = y; return pt.matrixTransform(svg.getScreenCTM().inverse()); }
+  svg.addEventListener('pointerdown', function(ev){
+    ptrs[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+    if (ptrCount() === 2) {
+      mode = null;   // a second finger cancels any kit drag and starts a pinch
+      var k = Object.keys(ptrs), a = ptrs[k[0]], b = ptrs[k[1]];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; panning = null;
+    } else if (ptrCount() === 1 && ZV.s > 1.01 && ev.target.closest && !ev.target.closest('#kit')) {
+      panning = { x: ev.clientX, y: ev.clientY }; try { svg.setPointerCapture(ev.pointerId); } catch(e){}
+    }
+  }, true);
+  svg.addEventListener('pointermove', function(ev){
+    if (!ptrs[ev.pointerId]) return;
+    ptrs[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+    if (pinch && ptrCount() >= 2) {
+      var k = Object.keys(ptrs), a = ptrs[k[0]], b = ptrs[k[1]], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      var before = svgPt(pinch.mx, pinch.my);
+      if (pinch.d > 0 && d > 0) zoomAt(d / pinch.d, before.x, before.y);
+      var after = svgPt(mx, my), v = svg.viewBox.baseVal, bb = baseBox();     // two-finger pan follows the finger midpoint
+      ZV.fx -= (after.x - before.x) / bb[2] * (d / pinch.d > 0 ? 1 : 1); ZV.fy -= (after.y - before.y) / bb[3];
+      applyView();
+      pinch.d = d; pinch.mx = mx; pinch.my = my;
+    } else if (panning && !mode) {
+      var r = svg.getBoundingClientRect(), v2 = svg.viewBox.baseVal, bb2 = baseBox();
+      ZV.fx -= (ev.clientX - panning.x) / r.width * v2.width / bb2[2]; ZV.fy -= (ev.clientY - panning.y) / r.height * v2.height / bb2[3];
+      panning.x = ev.clientX; panning.y = ev.clientY; applyView();
+    }
+  }, true);
+  function ptrEnd(ev){ delete ptrs[ev.pointerId]; if (ptrCount() < 2) pinch = null; if (ptrCount() === 0) panning = null; }
+  svg.addEventListener('pointerup', ptrEnd, true); svg.addEventListener('pointercancel', ptrEnd, true);
+  svg.addEventListener('wheel', function(ev){
+    if (!(ev.ctrlKey || ev.metaKey)) return;       // ctrl/cmd + wheel (or trackpad pinch) zooms the diagram only
+    ev.preventDefault(); var q = svgPt(ev.clientX, ev.clientY); zoomAt(Math.exp(-ev.deltaY * 0.01), q.x, q.y);
+  }, { passive: false });
+  document.addEventListener('DOMContentLoaded', function(){ var zb = $('zoomReset'); if (zb) zb.addEventListener('click', function(){ ZV = { s: 1, fx: 0.5, fy: 0.5 }; applyView(); }); });
+  var zbtn = $('zoomReset'); if (zbtn) zbtn.addEventListener('click', function(){ ZV = { s: 1, fx: 0.5, fy: 0.5 }; applyView(); });
 
   function drawWalls(){
     var g = $('walls');
@@ -579,6 +634,14 @@
       pp = P(1577, 4027); hideNear(pp[0], pp[1], 7);
       pp = P(400, L - 1200); hideNear(pp[0], pp[1], 9);
       pp = P(300, L); hideNear(pp[0], pp[1], 7);   // P3 removed too (power points to be planned later in an electrical plan)
+      var gone = ['P3', 'H2', 'DL2'];
+      var tx = $('baseplan').querySelectorAll('text');
+      for (var ti = 0; ti < tx.length; ti++) {      // legend table rows for the removed items
+        if (tx[ti].getAttribute('fill') === '#b22' && gone.indexOf(tx[ti].textContent.trim()) >= 0) {
+          var ry = tx[ti].getAttribute('y');
+          for (var tj = 0; tj < tx.length; tj++) if (tx[tj].getAttribute('y') === ry && tx[tj].getAttribute('x') >= 0 && parseFloat(tx[tj].getAttribute('x')) < 180) { tx[tj].style.display = 'none'; hiddenSvc.push(tx[tj]); }
+        }
+      }
       pp = P(0, 2546); hideNear(pp[0] + 3, pp[1], 6);
       var p2 = P(0, 2546 - 200), pc = [p2[0] + 1.7, p2[1]];
       out.push('<circle cx="' + f2(pc[0]) + '" cy="' + f2(pc[1]) + '" r="1.7" fill="white" stroke="#111" stroke-width="0.3"/>' +
@@ -685,7 +748,7 @@
     st.x = (px - cur.x0) * S; st.y = (cur.yBack - py) * S;
     if (snapOn('snapPos')) { st.x = Math.round(st.x/50)*50; st.y = Math.round(st.y/50)*50; }
   }
-  var mode = null, off = [0,0];
+  var off = [0,0];
   $('kit').addEventListener('pointerdown', function(ev){
     ev.preventDefault();
     var p = toSvg(ev);
