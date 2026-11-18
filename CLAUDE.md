@@ -16,7 +16,7 @@ documents.
   `Studio Build/Bed2 DESIGN/`), not here. This repo only consumes their SVGs.
 
 ## Wall builder (v5 of the tool, 18 Nov 2026)
-- The plan picker offers BASE PLAN v2 and v3 only (designs and archive SVGs are still embedded but not listed); all configuration is in the options. The panel's wall builder (v5: 10 mm plaster strip-back, continuous air gaps, internal dimension lines, P2 moved 200 and DL2/H2 hidden when the dividing wall is on, Fanco Infinity-iD 48 fan, 100 mm vents + 2 inline fans box) works on those two.
+- The plan picker offers BASE PLAN v2, v3 and v4 only (designs and archive SVGs are still embedded but not listed); all configuration is in the options. The panel's wall builder (v5: 10 mm plaster strip-back, continuous air gaps, internal dimension lines, P2 moved 200 and DL2/H2 hidden when the dividing wall is on, Fanco Infinity-iD 48 fan, 100 mm vents + 2 inline fans box) works on those three.
 - On BASE PLAN v2 and v3, the panel's "Studio walls" section draws concept wall layers over the plan: dividing wall from the
   laundry end, then window, ensuite and living room walls built from their existing face into the studio (Soundchek sheets 13,
   stud 90, air gap 25 or 50, optional second stud wall), a doorway on the living room wall (one door swings in; with a second stud
