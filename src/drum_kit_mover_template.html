@@ -158,6 +158,7 @@
     var isV1 = /BASE PLAN v1/.test(name);
     n = n.replace(/^Bed2 /, '').replace(/ plan$/, '').replace(/^BASE plan/i, 'BASE PLAN').replace(/ - existing with services/, ' (existing + services)');
     if (isV1 && !/v1/.test(n)) n = n.replace('BASE PLAN', 'BASE PLAN v1');
+    if (/BASE PLAN v3/.test(name)) n = n.replace(' (existing + services)', ' (OPTION: hallway wall out 300)');
     return n;
   }
   function parsePlan(entry){
@@ -318,6 +319,7 @@
     var note = p.kind === 'design'
       ? 'Claude concept drawing, not confirmed by Brendan. The fit check uses the studio clear area (inside the new wall linings), not the old room outline.'
       : 'Existing conditions, drawn unchanged. The fit check uses the whole existing room outline (no new walls).';
+    if (/BASE PLAN v3/.test(p.name)) note = 'OPTION, not the existing room (BASE PLAN v2 is today). Hallway wall moved out 300 into the living room. Claude concept, not confirmed by Brendan. The fit check uses the whole room outline of this option.';
     if (p.group === 2) note += ' Archived: superseded by a later version.';
     $('planNote').textContent = note;
     $('planMsg').textContent = '';
