@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bed 2 – Drum kit positioning tool v4</title>
+<title>Bed 2 – Drum kit positioning tool v5</title>
 <style>
   :root { --ink:#1d2330; --muted:#5b6475; --line:#d9dde5; --accent:#2457c5; --bad:#c0392b; --ok:#1e8449; }
   * { box-sizing: border-box; }
@@ -38,8 +38,8 @@
 </head>
 <body>
 <header>
-  <h1>Bed 2 – Drum kit positioning tool v4 (concept, unconfirmed)</h1>
-  <p>Pick any base plan or design underneath, then drag the shaded box to move it and the round handle to rotate. The kit keeps its position (mm from the window and back walls) when you switch plans, so you can compare. 1:25 when printed at A3.</p>
+  <h1>Bed 2 – Drum kit positioning tool v5 (concept, unconfirmed)</h1>
+  <p>Pick BASE PLAN v2 (today) or v3 (option) underneath and set the walls, fan and ventilation in the options, then drag the shaded box to move it and the round handle to rotate. The kit keeps its position (mm from the window and back walls) when you switch plans, so you can compare. 1:25 when printed at A3.</p>
 </header>
 <div class="wrap">
   <div class="plan">
@@ -78,19 +78,16 @@
       <select id="planSel" style="flex:1;min-width:0"></select>
       <button id="planNext" title="Next plan in the list">▶</button>
     </div>
-    <div class="row">
-      <button id="btnAdd">Add plan SVGs from files…</button>
-      <input type="file" id="fileAdd" accept=".svg,image/svg+xml" multiple style="display:none">
-    </div>
     <div class="small" id="planNote"></div>
     <div class="small warn" id="planMsg"></div>
 
     <h2>Studio walls (concept, unconfirmed)</h2>
     <div class="small" id="wbSupport"></div>
-    <label class="chk"><input type="checkbox" id="wbOn"> <b>Add dividing wall</b> (turns the existing studio walls into stud and adds the doorway)</label>
+    <label class="chk"><input type="checkbox" id="wbOn"> <b>Add dividing wall</b> (strips the existing studio walls, turns them into stud, adds the doorway, moves P2, removes DL2 and H2)</label>
     <div class="row">
       <label class="f">Soundchek sheet (mm)<input type="number" id="wbSheet" step="1" min="1"></label>
       <label class="f">stud depth (mm)<input type="number" id="wbStud" step="5" min="20"></label>
+      <label class="f">plaster stripped (mm)<input type="number" id="wbStrip" step="1" min="0"></label>
       <label class="f">door width (mm)<input type="number" id="wbDoorW" step="10" min="500"></label>
       <label class="f">door hinge off ensuite leaf (mm)<input type="number" id="wbDoorOff" step="10" min="0"></label>
     </div>
@@ -98,19 +95,19 @@
     <div class="small" id="wbInfo"></div>
     <div class="row"><button id="wbReset">Reset walls</button></div>
     <div class="small" style="margin-top:4px">
-      Each wall is built from its existing face into the studio: sheets, or air gap then (optionally) a second stud wall and sheets.
+      Each wall is built from its existing stud face (after the plaster is stripped from the studio side) into the studio: sheets, or air gap then (optionally) a second stud wall and sheets.
       The dividing wall is built from the laundry end (bedroom face on the 200 step line, 2440 from the laundry wall) toward the studio.
-      Existing studio walls are shown as stud with their faces unchanged (any plasterboard strip-back is not modelled).
+      Where walls with air gaps meet, the gaps run into each other so the air gap is continuous round the studio.
       Colours: <span style="background:#fbeaa0;border:1px solid #b8941a;padding:0 5px">stud</span>
       <span style="background:#9a7ce0;color:#fff;padding:0 5px">Soundchek</span>
       <span style="background:#e3f1fb;border:1px solid #9bc3e0;padding:0 5px">air gap</span>
     </div>
 
     <h2>Ceiling items (concept)</h2>
-    <label class="chk"><input type="checkbox" id="wbFan"> Ceiling fan + light (lined well 340 square), blade span
-      <input type="number" id="wbFanD" step="50" style="width:70px"> mm</label>
-    <label class="chk"><input type="checkbox" id="wbVent"> Ventilation (supply and extract, placeholder boxes)</label>
-    <div class="small">Placed in the studio, in the ceiling above the kit. Fan blade span is a placeholder until you give the model. Ventilation is your inline fans and sound mazes (not an ERV) and the 450 boxes only mark where the grilles might go; ducts and airflow are not drawn.</div>
+    <label class="chk"><input type="checkbox" id="wbFan"> Ceiling fan with light: Fanco Infinity-iD DC 48 in, blade diameter
+      <input type="number" id="wbFanD" step="10" style="width:70px"> mm</label>
+    <label class="chk"><input type="checkbox" id="wbVent"> Ventilation: 100 mm round supply and extract vents, 2 inline fans (as v4, ERV replaced)</label>
+    <div class="small">Fan sizes from Fanco's spec sheet: blade diameter 1220, canopy 170, ceiling to lowest blade 270, ceiling to lowest part of the light 330 (CCT LED model). The 340 square lined well is carried over from the v4 design (unconfirmed). Vent positions and duct routes follow v4 and are placeholders: ducts go through the roof, airflow and silencers are not drawn. Positions move with the studio clear area.</div>
 
 
     <h2>Position (centre of box)</h2>
@@ -340,14 +337,14 @@
   function save(){ try { st.plan = cur.name; localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){} }
 
   // ---- wall builder: concept layers over BASE PLAN v2 / v3 (unconfirmed, not for construction) ----
-  var WB_KEY = 'bed2-walls-v1';
+  var WB_KEY = 'bed2-walls-v2';
   function defWB(){
-    return { on: false, sheet: 13, stud: 90, doorW: 820, doorOff: 100,
+    return { on: false, sheet: 13, stud: 90, strip: 10, doorW: 820, doorOff: 100,
       div: { outer: 1, inner: 's1', second: true, sec: 1 },
       win: { inner: 's1', second: true, sec: 1 },
       ens: { inner: 's1', second: true, sec: 1 },
       liv: { outer: 1, inner: 's1', second: true, sec: 1, door: true },
-      fan: false, fanD: 1200, vent: false };
+      fan: false, fanD: 1220, vent: false };
   }
   function mergeWB(d, s){
     for (var k in s) { if (s[k] && typeof s[k] === 'object' && d[k] && typeof d[k] === 'object') mergeWB(d[k], s[k]); else d[k] = s[k]; }
@@ -388,7 +385,7 @@
   function numVal(id, def, min){ var v = parseFloat($(id).value); return (isFinite(v) && v >= min) ? v : def; }
   function readWbUI(){
     WB.on = $('wbOn').checked;
-    WB.sheet = numVal('wbSheet', WB.sheet, 1); WB.stud = numVal('wbStud', WB.stud, 20);
+    WB.sheet = numVal('wbSheet', WB.sheet, 1); WB.stud = numVal('wbStud', WB.stud, 20); WB.strip = numVal('wbStrip', WB.strip, 0);
     WB.doorW = numVal('wbDoorW', WB.doorW, 500); WB.doorOff = numVal('wbDoorOff', WB.doorOff, 0);
     WB.fan = $('wbFan').checked; WB.vent = $('wbVent').checked; WB.fanD = numVal('wbFanD', WB.fanD, 200);
     WALLS.forEach(function(w){
@@ -399,7 +396,7 @@
     });
   }
   function writeWbUI(){
-    $('wbOn').checked = WB.on; $('wbSheet').value = WB.sheet; $('wbStud').value = WB.stud;
+    $('wbOn').checked = WB.on; $('wbSheet').value = WB.sheet; $('wbStud').value = WB.stud; $('wbStrip').value = WB.strip;
     $('wbDoorW').value = WB.doorW; $('wbDoorOff').value = WB.doorOff;
     $('wbFan').checked = WB.fan; $('wbVent').checked = WB.vent; $('wbFanD').value = WB.fanD;
     buildWbUI();
@@ -407,7 +404,7 @@
   function syncWbUI(){
     var sup = W.sup;
     $('wbSupport').textContent = sup ? '' : 'The wall builder works on BASE PLAN v2 and v3 only (designs already include their own walls). Pick one of those to use it.';
-    ['wbOn', 'wbSheet', 'wbStud', 'wbDoorW', 'wbDoorOff', 'wbFan', 'wbFanD', 'wbVent', 'wbReset'].forEach(function(i){ $(i).disabled = !sup; });
+    ['wbOn', 'wbSheet', 'wbStud', 'wbStrip', 'wbDoorW', 'wbDoorOff', 'wbFan', 'wbFanD', 'wbVent', 'wbReset'].forEach(function(i){ $(i).disabled = !sup; });
     WALLS.forEach(function(w){
       var id = 'wb_' + w.k, c = WB[w.k], on = sup && WB.on, gap = /^g/.test(c.inner);
       [id + '_outer', id + '_inner', id + '_second', id + '_sec', 'wb_liv_door'].forEach(function(i){ var el = $(i); if (el) el.disabled = !on; });
@@ -417,9 +414,10 @@
     });
   }
   function wbChanged(){ readWbUI(); try { localStorage.setItem(WB_KEY, JSON.stringify(WB)); } catch(e){} drawWalls(); syncWbUI(); render(); }
-  ['wbOn', 'wbSheet', 'wbStud', 'wbDoorW', 'wbDoorOff', 'wbFan', 'wbFanD', 'wbVent'].forEach(function(i){ $(i).addEventListener('change', wbChanged); });
+  ['wbOn', 'wbSheet', 'wbStud', 'wbStrip', 'wbDoorW', 'wbDoorOff', 'wbFan', 'wbFanD', 'wbVent'].forEach(function(i){ $(i).addEventListener('change', wbChanged); });
   $('wbReset').addEventListener('click', function(){ WB = defWB(); writeWbUI(); wbChanged(); });
 
+  // layers of one wall, from its outer face towards the studio
   function innerLayers(c){
     var L = [], sh = WB.sheet;
     if (c.inner === 's1' || c.inner === 's2') L.push({ t: 'sheet', mm: sh * (c.inner === 's1' ? 1 : 2) });
@@ -430,117 +428,221 @@
     return L;
   }
   function sumL(L){ return L.reduce(function(a, l){ return a + l.mm; }, 0); }
+  // Summary used to join walls at the corners so an air gap runs continuously into the next wall's gap
+  function sideInfo(layers){
+    var t = sumL(layers), hasGap = layers.length > 0 && layers[0].t === 'gap', g = hasGap ? layers[0].mm : 0, second = layers.some(function(l){ return l.t === 'stud'; });
+    return { layers: layers, t: t, hasGap: hasGap, g: g, second: second,
+      bGap: hasGap ? g : t,                                   // where a neighbour's stud starts
+      bSheet: hasGap ? (second ? g + WB.stud : g) : t,        // where a neighbour's sheets start
+      gapStart: hasGap ? 0 : t };                             // where a neighbour's gap starts (0 = the gaps join)
+  }
+  function startFor(N, type){ return type === 'gap' ? N.gapStart : (type === 'stud' ? N.bGap : N.bSheet); }
   var FILL = { sheet: '#9a7ce0', gap: '#e3f1fb', stud: 'url(#wbStudPat)' };
+  var ORDER = { gap: 0, stud: 1, sheet: 2 };
+  var hiddenSvc = [];
+  function restoreServices(){ hiddenSvc.forEach(function(el){ el.style.display = ''; }); hiddenSvc = []; }
+  function hideNear(cx, cy, half){
+    var els = $('baseplan').querySelectorAll('circle,line,text');
+    for (var i = 0; i < els.length; i++) {
+      var b; try { b = els[i].getBBox(); } catch(e){ continue; }
+      if (b.x >= cx - half && b.x + b.width <= cx + half && b.y >= cy - half && b.y + b.height <= cy + half) { els[i].style.display = 'none'; hiddenSvc.push(els[i]); }
+    }
+  }
+  function setViewBox(ext){
+    var v = cur.vb;
+    svg.setAttribute('viewBox', ext ? ((v[0] - 20) + ' ' + v[1] + ' ' + (v[2] + 20) + ' ' + (v[3] + 22)) : (v[0] + ' ' + v[1] + ' ' + v[2] + ' ' + v[3]));
+  }
 
   function drawWalls(){
     var g = $('walls');
+    restoreServices();
     W.sup = !!cur && /BASE PLAN v[23]/i.test(cur.name) && cur.group === 0 && !cur.loaded;
     W.active = false; W.ref = null; W.edges = null; W.info = null;
-    if (!W.sup) { g.innerHTML = ''; return; }
-    var x0 = cur.x0, yT = cur.yTop, WT = 112, YS = 2440, YSB = YS + WT;
+    if (!W.sup) { g.innerHTML = ''; if (cur) setViewBox(false); return; }
+    var x0 = cur.x0, yT = cur.yTop, WT = 112, YS = 2440, YSB = YS + WT, XSTEP = 2777;
     var L = Math.round((cur.yBack - yT) * S), XH = Math.round((cur.edges.hall - x0) * S);
-    $('wbClipPoly').setAttribute('points', cur.room.map(function(p){ return p[0] + ',' + p[1]; }).join(' '));
     function P(x, y){ return [x0 + x / S, yT + y / S]; }
     var out = [];
+    function f2(v){ return v.toFixed(2); }
     function R(xa, ya, xb, yb, fill, line){
       var a = P(Math.min(xa, xb), Math.min(ya, yb)), b = P(Math.max(xa, xb), Math.max(ya, yb));
-      out.push('<rect x="' + a[0].toFixed(2) + '" y="' + a[1].toFixed(2) + '" width="' + (b[0] - a[0]).toFixed(2) + '" height="' + (b[1] - a[1]).toFixed(2) +
+      out.push('<rect x="' + f2(a[0]) + '" y="' + f2(a[1]) + '" width="' + f2(b[0] - a[0]) + '" height="' + f2(b[1] - a[1]) +
         '" fill="' + fill + '"' + (line === false ? ' stroke="none"' : ' stroke="#333" stroke-width="0.15"') + '/>');
     }
     function LN(xa, ya, xb, yb, col, w, dash){
       var a = P(xa, ya), b = P(xb, yb);
-      out.push('<line x1="' + a[0].toFixed(2) + '" y1="' + a[1].toFixed(2) + '" x2="' + b[0].toFixed(2) + '" y2="' + b[1].toFixed(2) + '" stroke="' + col + '" stroke-width="' + w + '"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + '/>');
+      out.push('<line x1="' + f2(a[0]) + '" y1="' + f2(a[1]) + '" x2="' + f2(b[0]) + '" y2="' + f2(b[1]) + '" stroke="' + col + '" stroke-width="' + w + '"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + '/>');
     }
-    function TX(x, y, s, size, col, anchor, rot){
+    function TX(x, y, s, size, col, anchor, bold, rot){
       var a = P(x, y);
-      out.push('<text x="' + a[0].toFixed(2) + '" y="' + a[1].toFixed(2) + '" font-size="' + size + '" fill="' + col + '" text-anchor="' + (anchor || 'middle') + '"' +
-        (rot ? ' transform="rotate(' + rot + ' ' + a[0].toFixed(2) + ' ' + a[1].toFixed(2) + ')"' : '') + '>' + s + '</text>');
+      out.push('<text x="' + f2(a[0]) + '" y="' + f2(a[1]) + '" font-size="' + size + '" fill="' + col + '" text-anchor="' + (anchor || 'middle') + '"' + (bold ? ' font-weight="700"' : '') +
+        (rot ? ' transform="rotate(' + rot + ' ' + f2(a[0]) + ' ' + f2(a[1]) + ')"' : '') + '>' + s + '</text>');
+    }
+    function DH(y, xa, xb, txt, below){
+      var a = P(xa, y), b = P(xb, y);
+      out.push('<line x1="' + f2(a[0]) + '" y1="' + f2(a[1]) + '" x2="' + f2(b[0]) + '" y2="' + f2(b[1]) + '" stroke="#b22" stroke-width="0.25"/>');
+      [a, b].forEach(function(p){ out.push('<line x1="' + f2(p[0]) + '" y1="' + f2(p[1] - 1.2) + '" x2="' + f2(p[0]) + '" y2="' + f2(p[1] + 1.2) + '" stroke="#b22" stroke-width="0.25"/>'); });
+      out.push('<text x="' + f2((a[0] + b[0]) / 2) + '" y="' + f2(a[1] + (below ? 3.6 : -1.0)) + '" font-size="2.4" fill="#b22" text-anchor="middle">' + txt + '</text>');
+    }
+    function DV(x, ya, yb, txt, right){
+      var a = P(x, ya), b = P(x, yb);
+      out.push('<line x1="' + f2(a[0]) + '" y1="' + f2(a[1]) + '" x2="' + f2(b[0]) + '" y2="' + f2(b[1]) + '" stroke="#b22" stroke-width="0.25"/>');
+      [a, b].forEach(function(p){ out.push('<line x1="' + f2(p[0] - 1.2) + '" y1="' + f2(p[1]) + '" x2="' + f2(p[0] + 1.2) + '" y2="' + f2(p[1]) + '" stroke="#b22" stroke-width="0.25"/>'); });
+      var cy = (a[1] + b[1]) / 2, tx = a[0] + (right ? 3.6 : -1.0);
+      out.push('<text transform="translate(' + f2(tx) + ',' + f2(cy) + ') rotate(-90)" font-size="2.4" fill="#b22" text-anchor="middle">' + txt + '</text>');
     }
     var zone;   // studio zone for the ceiling items: [x0, y0, x1, y1] in real mm
+    var vbExt = false;
     if (WB.on) {
-      var divL = [{ t: 'sheet', mm: WB.sheet * WB.div.outer }, { t: 'stud', mm: WB.stud }].concat(innerLayers(WB.div));
-      var tD = sumL(divL), tW = sumL(innerLayers(WB.win)), tH = sumL(innerLayers(WB.liv)), tE = sumL(innerLayers(WB.ens)), tO = WB.sheet * WB.liv.outer;
-      var yD = YS + tD, yE = L - tE, cx0 = tW, cx1 = XH - tH;
-      // existing studio walls turned into stud (faces unchanged)
-      var TWB = 105;   // grey part of the brick-veneer window wall (213 - 108 brick)
-      R(-TWB, YS, 0, L - 2734, FILL.stud); R(-TWB, L - 364, 0, L, FILL.stud);   // window wall, either side of window 1
-      R(-TWB, L, XH, L + WT, FILL.stud);                                         // ensuite wall
-      R(XH, YSB, XH + WT, L, FILL.stud);                                         // living room (hallway) wall
-      // layers inside the room (clipped to the room outline)
-      out.push('<g clip-path="url(#wbClip)">');
-      var c = YS; divL.forEach(function(l){ R(0, c, XH, c + l.mm, FILL[l.t]); c += l.mm; });            // dividing wall, from the laundry end
-      c = L; innerLayers(WB.ens).forEach(function(l){ R(0, c - l.mm, XH, c, FILL[l.t]); c -= l.mm; });   // ensuite wall, from its face
-      c = 0; innerLayers(WB.win).forEach(function(l){ R(c, yD, c + l.mm, yE, FILL[l.t]); c += l.mm; });  // window wall
-      c = XH; innerLayers(WB.liv).forEach(function(l){ R(c - l.mm, yD, c, yE, FILL[l.t]); c -= l.mm; }); // hallway wall, inner leaf
-      out.push('</g>');
-      // living-room side sheets (outside the existing face)
-      var faceX = XH + WT, yEndLiv = L + (faceX > 3094 ? (faceX - 3094) * 650 / 517 : 0);
+      var strip = WB.strip, xW = -strip, xH = XH + strip, yEf = L + strip, faceX = XH + WT;
+      var pD = WB.sheet * WB.div.outer + WB.stud, yDo = YS + pD;       // dividing wall: solid outer leaf, then its inner layers from yDo
+      var SW = sideInfo(innerLayers(WB.win)), SH = sideInfo(innerLayers(WB.liv)), SE = sideInfo(innerLayers(WB.ens)), SD = sideInfo(innerLayers(WB.div));
+      var tO = WB.sheet * WB.liv.outer;
+      var cx0 = xW + SW.t, cx1 = xH - SH.t, cy0 = yDo + SD.t, cy1 = yEf - SE.t;
+      var ROOMC = '#fbfbf8';
+      // 1. plaster stripped from the studio side of the existing walls; what is left is stud
+      var TWB = 105;                                       // grey part of the brick-veneer window wall (213 - 108 brick)
+      if (strip > 0) {
+        R(xW, YS, 0, L - 2734, ROOMC, false); R(xW, L - 364, 0, L, ROOMC, false);   // window wall, either side of window 1
+        R(xW, L, xH, yEf, ROOMC, false);                                          // ensuite wall
+        R(XH, YSB, xH, L, ROOMC, false);                                          // living room (hallway) wall
+      }
+      R(-TWB, YS, xW, L - 2734, FILL.stud); R(-TWB, L - 364, xW, L, FILL.stud);
+      R(-TWB, yEf, faceX, L + WT, FILL.stud);
+      R(xH, YSB, faceX, L, FILL.stud);
+      // 2. dividing wall solid outer leaf (Soundchek on the bedroom side, then stud), split where the step wall ends
+      function Dr(ya, yb, fill, xa, xb){
+        if (ya < YSB) R(xa, ya, Math.min(xb, XSTEP), Math.min(yb, YSB), fill);
+        if (yb > YSB) R(xa, Math.max(ya, YSB), xb, yb, fill);
+      }
+      Dr(YS, YS + WB.sheet * WB.div.outer, FILL.sheet, xW, xH);
+      Dr(YS + WB.sheet * WB.div.outer, yDo, FILL.stud, xW, xH);
+      // 3. every wall's inner layers, painted gap first then stud then sheets; strips run corner to corner so the gaps join
+      var strips = [];
+      var o = 0; SW.layers.forEach(function(l){ strips.push({ t: l.t, k: 'W', a: xW + o, b: xW + o + l.mm }); o += l.mm; });
+      o = 0; SH.layers.forEach(function(l){ strips.push({ t: l.t, k: 'H', a: xH - o - l.mm, b: xH - o }); o += l.mm; });
+      o = 0; SE.layers.forEach(function(l){ strips.push({ t: l.t, k: 'E', a: yEf - o - l.mm, b: yEf - o }); o += l.mm; });
+      o = 0; SD.layers.forEach(function(l){ strips.push({ t: l.t, k: 'D', a: yDo + o, b: yDo + o + l.mm }); o += l.mm; });
+      strips.sort(function(p, q){ return ORDER[p.t] - ORDER[q.t]; });
+      strips.forEach(function(s){
+        var f = FILL[s.t];
+        if (s.k === 'W' || s.k === 'H') R(s.a, yDo + startFor(SD, s.t), s.b, yEf - startFor(SE, s.t), f);
+        else {
+          var xa = xW + startFor(SW, s.t), xb = xH - startFor(SH, s.t);
+          if (s.k === 'E') R(xa, s.a, xb, s.b, f); else Dr(s.a, s.b, f, xa, xb);
+        }
+      });
+      // 4. living-room side sheets (outside the existing face)
+      var yEndLiv = L + (faceX > 3094 ? (faceX - 3094) * 650 / 517 : 0);
       R(faceX, YSB, faceX + tO, yEndLiv, FILL.sheet);
-      // doorway(s)
+      // 5. doorway(s), hinged on the ensuite side
       var door = null;
       if (WB.liv.door) {
-        var yh = yE - WB.doorOff, yl = yh - WB.doorW, xl = XH - tH, xr = faceX + tO;
+        var yh = cy1 - WB.doorOff, yl = yh - WB.doorW, xl = xH - SH.t, xr = faceX + tO;
         R(xl, yl, xr, yh, '#ffffff', false);
         LN(xl, yl, xr, yl, '#333', 0.2); LN(xl, yh, xr, yh, '#333', 0.2);
-        var dbl = /^g/.test(WB.liv.inner) && WB.liv.second, xo = XH + WT / 2, gp = WB.liv.inner === 'g25' ? 25 : 50, xi = XH - gp - WB.stud / 2;
-        var dr = WB.doorW / S;
+        var dbl = SH.hasGap && SH.second, xo = (xH + faceX) / 2, xi = xH - SH.g - WB.stud / 2, dr = WB.doorW / S;
         var leaf = function(xp, dir, col, lab){
           var h = P(xp, yh), l = P(xp, yl), e = P(xp + dir * WB.doorW, yh);
-          out.push('<line x1="' + h[0].toFixed(2) + '" y1="' + h[1].toFixed(2) + '" x2="' + l[0].toFixed(2) + '" y2="' + l[1].toFixed(2) + '" stroke="' + col + '" stroke-width="0.8"/>');
-          out.push('<line x1="' + h[0].toFixed(2) + '" y1="' + h[1].toFixed(2) + '" x2="' + e[0].toFixed(2) + '" y2="' + e[1].toFixed(2) + '" stroke="' + col + '" stroke-width="0.3" stroke-dasharray="1.2 0.8"/>');
-          out.push('<path d="M ' + l[0].toFixed(2) + ' ' + l[1].toFixed(2) + ' A ' + dr.toFixed(2) + ' ' + dr.toFixed(2) + ' 0 0 ' + (dir > 0 ? 1 : 0) + ' ' + e[0].toFixed(2) + ' ' + e[1].toFixed(2) + '" fill="none" stroke="' + col + '" stroke-width="0.3" stroke-dasharray="1.2 0.8"/>');
-          out.push('<circle cx="' + h[0].toFixed(2) + '" cy="' + h[1].toFixed(2) + '" r="0.7" fill="' + col + '"/>');
+          out.push('<line x1="' + f2(h[0]) + '" y1="' + f2(h[1]) + '" x2="' + f2(l[0]) + '" y2="' + f2(l[1]) + '" stroke="' + col + '" stroke-width="0.8"/>');
+          out.push('<line x1="' + f2(h[0]) + '" y1="' + f2(h[1]) + '" x2="' + f2(e[0]) + '" y2="' + f2(e[1]) + '" stroke="' + col + '" stroke-width="0.3" stroke-dasharray="1.2 0.8"/>');
+          out.push('<path d="M ' + f2(l[0]) + ' ' + f2(l[1]) + ' A ' + f2(dr) + ' ' + f2(dr) + ' 0 0 ' + (dir > 0 ? 1 : 0) + ' ' + f2(e[0]) + ' ' + f2(e[1]) + '" fill="none" stroke="' + col + '" stroke-width="0.3" stroke-dasharray="1.2 0.8"/>');
+          out.push('<circle cx="' + f2(h[0]) + '" cy="' + f2(h[1]) + '" r="0.7" fill="' + col + '"/>');
           TX(xp + dir * WB.doorW * 0.55, yh - WB.doorW * 0.35, lab, 1.9, col, 'middle');
         };
         if (dbl) { leaf(xi, -1, '#b5451b', 'door in'); leaf(xo, 1, '#d9801a', 'door out'); }
         else leaf(xo, -1, '#b5451b', 'door in');
-        door = { n: dbl ? 2 : 1, yl: yl, yh: yh };
+        door = { n: dbl ? 2 : 1 };
       }
-      zone = [cx0, yD, cx1, yE];
+      zone = [cx0, cy0, cx1, cy1];
       W.active = true;
-      W.ref = [P(cx0, yD), P(cx1, yD), P(cx1, yE), P(cx0, yE)];
-      W.edges = { win: P(cx0, 0)[0], hall: P(cx1, 0)[0], back: P(0, yE)[1], front: P(0, yD)[1] };
-      W.name = 'studio clear area from the wall builder (' + Math.round(cx1 - cx0) + ' x ' + Math.round(yE - yD) + ' mm)';
-      W.info = { tD: tD, tW: tW, tH: tH, tE: tE, tO: tO, w: cx1 - cx0, d: yE - yD, yD: yD, door: door };
-      out.push('<g id="wbClearG"><rect x="' + P(cx0, yD)[0].toFixed(2) + '" y="' + P(cx0, yD)[1].toFixed(2) + '" width="' + ((cx1 - cx0) / S).toFixed(2) + '" height="' + ((yE - yD) / S).toFixed(2) +
-        '" fill="#1e8449" fill-opacity="0.05" stroke="#1e8449" stroke-width="0.4" stroke-dasharray="3 1.5"/></g>');
-      TX(cx0 + 40, yD + 130, 'studio clear area (checked against)', 2.2, '#1e8449', 'start');
+      W.ref = [P(cx0, cy0), P(cx1, cy0), P(cx1, cy1), P(cx0, cy1)];
+      W.edges = { win: P(cx0, 0)[0], hall: P(cx1, 0)[0], back: P(0, cy1)[1], front: P(0, cy0)[1] };
+      W.name = 'studio clear area from the wall builder (' + Math.round(cx1 - cx0) + ' x ' + Math.round(cy1 - cy0) + ' mm)';
+      W.info = { pD: pD, tD: SD.t, tW: SW.t, tH: SH.t, tE: SE.t, tO: tO, w: cx1 - cx0, d: cy1 - cy0, yDo: yDo, cy0: cy0, door: door, strip: strip };
+      out.push('<g id="wbClearG"><rect x="' + f2(P(cx0, cy0)[0]) + '" y="' + f2(P(cx0, cy0)[1]) + '" width="' + f2((cx1 - cx0) / S) + '" height="' + f2((cy1 - cy0) / S) +
+        '" fill="#1e8449" fill-opacity="0.05" stroke="#1e8449" stroke-width="0.4" stroke-dasharray="3 1.5"/>');
+      var tl = P(cx0 + 40, cy0 + 130);
+      out.push('<text x="' + f2(tl[0]) + '" y="' + f2(tl[1]) + '" font-size="2.2" fill="#1e8449">studio clear area (checked against)</text></g>');
+      // 6. internal measurement lines round the outside (title block masked so the sheet can grow downward)
+      vbExt = true;
+      var mk = P(0, L + 1000);
+      out.push('<rect x="0" y="333.6" width="300" height="40" fill="#ffffff"/>');
+      var yb1 = L + 950, yb2 = L + 1250;
+      DH(yb1, xW, cx0, 'W ' + Math.round(cx0 - xW), true); DH(yb1, cx0, cx1, 'clear ' + Math.round(cx1 - cx0), false); DH(yb1, cx1, xH, 'H ' + Math.round(xH - cx1), true);
+      DH(yb2, xW, xH, 'between existing stud faces ' + Math.round(xH - xW) + ' (after ' + strip + ' stripped)', false);
+      var xl1 = -1450, xl2 = -1750;
+      DV(xl1, YS, cy0, 'D ' + Math.round(cy0 - YS), false); DV(xl1, cy0, cy1, 'clear ' + Math.round(cy1 - cy0), false); DV(xl1, cy1, yEf, 'E ' + Math.round(yEf - cy1), false);
+      DV(xl2, YS, yEf, 'bedroom face to ensuite stud face ' + Math.round(yEf - YS), false);
+      // 7. services: DL2 and H2 go, P2 moves 200 toward the laundry wall
+      var pp;
+      pp = P(1577, 4027); hideNear(pp[0], pp[1], 7);
+      pp = P(400, L - 1200); hideNear(pp[0], pp[1], 9);
+      pp = P(0, 2546); hideNear(pp[0] + 3, pp[1], 6);
+      var p2 = P(0, 2546 - 200), pc = [p2[0] + 1.7, p2[1]];
+      out.push('<circle cx="' + f2(pc[0]) + '" cy="' + f2(pc[1]) + '" r="1.7" fill="white" stroke="#111" stroke-width="0.3"/>' +
+        '<line x1="' + f2(pc[0] - 1.275) + '" y1="' + f2(pc[1] - 0.6) + '" x2="' + f2(pc[0] + 1.275) + '" y2="' + f2(pc[1] - 0.6) + '" stroke="#111" stroke-width="0.35"/>' +
+        '<line x1="' + f2(pc[0] - 1.275) + '" y1="' + f2(pc[1] + 0.6) + '" x2="' + f2(pc[0] + 1.275) + '" y2="' + f2(pc[1] + 0.6) + '" stroke="#111" stroke-width="0.35"/>' +
+        '<text x="' + f2(p2[0] + 4.6) + '" y="' + f2(p2[1] + 1) + '" font-size="2.3" font-weight="700" fill="#333">P2 (moved 200)</text>');
     } else {
       zone = [0, YS, XH, L];
     }
-    // ceiling items, centred in the studio zone
+    // ceiling items, placed from the studio zone
     var zx = (zone[0] + zone[2]) / 2, zy = (zone[1] + zone[3]) / 2;
     if (WB.fan) {
       var fc = P(zx, zy), r = WB.fanD / 2 / S, hb = 170 / S;
-      out.push('<circle cx="' + fc[0].toFixed(2) + '" cy="' + fc[1].toFixed(2) + '" r="' + r.toFixed(2) + '" fill="#2a9d8f" fill-opacity="0.06" stroke="#2a9d8f" stroke-width="0.35" stroke-dasharray="2 1.2"/>');
-      out.push('<rect x="' + (fc[0] - hb).toFixed(2) + '" y="' + (fc[1] - hb).toFixed(2) + '" width="' + (2 * hb).toFixed(2) + '" height="' + (2 * hb).toFixed(2) + '" fill="#bfe6e1" stroke="#2a9d8f" stroke-width="0.4"/>');
-      out.push('<circle cx="' + fc[0].toFixed(2) + '" cy="' + fc[1].toFixed(2) + '" r="0.9" fill="#2a9d8f"/>');
-      TX(zx, zy + 250 + 120, 'FAN + LIGHT (lined well 340, blade span ' + WB.fanD + ' TBC)', 1.9, '#1f7a70', 'middle');
+      out.push('<circle cx="' + f2(fc[0]) + '" cy="' + f2(fc[1]) + '" r="' + f2(r) + '" fill="#2a9d8f" fill-opacity="0.06" stroke="#2a9d8f" stroke-width="0.35" stroke-dasharray="2 1.2"/>');
+      out.push('<rect x="' + f2(fc[0] - hb) + '" y="' + f2(fc[1] - hb) + '" width="' + f2(2 * hb) + '" height="' + f2(2 * hb) + '" fill="#bfe6e1" stroke="#2a9d8f" stroke-width="0.4"/>');
+      out.push('<circle cx="' + f2(fc[0]) + '" cy="' + f2(fc[1]) + '" r="' + f2(85 / S) + '" fill="#2a9d8f"/>');
+      TX(zx, zy + 340, 'FANCO INFINITY-iD DC 48 + LIGHT (blades ' + WB.fanD + ')', 1.9, '#1f7a70', 'middle');
     }
     if (WB.vent) {
-      var vs = 450;
-      var box = function(cx, cy, col, fill, lab){
-        var a = P(cx - vs / 2, cy - vs / 2);
-        out.push('<rect x="' + a[0].toFixed(2) + '" y="' + a[1].toFixed(2) + '" width="' + (vs / S).toFixed(2) + '" height="' + (vs / S).toFixed(2) + '" fill="' + fill + '" stroke="' + col + '" stroke-width="0.4" stroke-dasharray="1.6 1"/>');
-        var q = P(cx, cy);
-        out.push('<line x1="' + (q[0] - 3).toFixed(2) + '" y1="' + (q[1] - 3).toFixed(2) + '" x2="' + (q[0] + 3).toFixed(2) + '" y2="' + (q[1] + 3).toFixed(2) + '" stroke="' + col + '" stroke-width="0.3"/>');
-        out.push('<line x1="' + (q[0] - 3).toFixed(2) + '" y1="' + (q[1] + 3).toFixed(2) + '" x2="' + (q[0] + 3).toFixed(2) + '" y2="' + (q[1] - 3).toFixed(2) + '" stroke="' + col + '" stroke-width="0.3"/>');
-        TX(cx, cy + vs / 2 + 110, lab, 1.9, col, 'middle');
+      var CS = '#1a8f3c', CE = '#b0307a';
+      var sgx = zone[2] - 340, sgy = zone[1] + 450, egx = zone[0] + 530, egy = zone[3] - 356;   // vent positions as v4, relative to the clear area
+      var duct = function(pts, col){
+        out.push('<polyline points="' + pts.map(function(q){ var a = P(q[0], q[1]); return f2(a[0]) + ',' + f2(a[1]); }).join(' ') + '" fill="none" stroke="' + col + '" stroke-width="0.6" stroke-dasharray="2.4 1.2"/>');
       };
-      box(zone[2] - 300, zone[1] + 300, '#1e8449', '#e9f5ec', 'VENT SUPPLY (placeholder)');
-      box(zone[0] + 300, zone[3] - 300, '#a8267a', '#fbe9f4', 'VENT EXTRACT (placeholder)');
+      var vent = function(gx, gy, col, lab, lx, anchor){
+        R(gx - 220, gy - 250, gx + 220, gy + 150, '#fff3b8', false);
+        out.push('<rect x="' + f2(P(gx - 220, gy - 250)[0]) + '" y="' + f2(P(gx - 220, gy - 250)[1]) + '" width="' + f2(440 / S) + '" height="' + f2(400 / S) + '" fill="none" stroke="' + col + '" stroke-width="0.4" stroke-dasharray="2 1"/>');
+        var c = P(gx, gy);
+        out.push('<circle cx="' + f2(c[0]) + '" cy="' + f2(c[1]) + '" r="' + f2(50 / S) + '" fill="#fff" stroke="' + col + '" stroke-width="0.45"/>');
+        out.push('<circle cx="' + f2(c[0]) + '" cy="' + f2(c[1]) + '" r="' + f2(25 / S) + '" fill="none" stroke="' + col + '" stroke-width="0.25"/>');
+        TX(gx, gy - 140, 'lined box', 1.7, '#555', 'middle');
+        TX(lx, gy + 260, lab, 1.9, col, anchor, true);
+      };
+      // the two inline fans replace the v4 ERV unit; they sit in the roof space over the bedroom end
+      R(1450, 1700, 2400, 2150, '#f1f1f1', false);
+      out.push('<rect x="' + f2(P(1450, 1700)[0]) + '" y="' + f2(P(1450, 1700)[1]) + '" width="' + f2(950 / S) + '" height="' + f2(450 / S) + '" fill="none" stroke="#444" stroke-width="0.5" stroke-dasharray="2.5 1.2"/>');
+      LN(1925, 1700, 1925, 2150, '#999', 0.25, '1 1');
+      TX(1925, 1850, '2 INLINE FANS (roof space)', 2.1, '#333', 'middle', true);
+      TX(1925, 1970, '1 extraction, 1 supply', 1.9, '#555', 'middle');
+      [[1690, 2060, CE], [2160, 2060, CS]].forEach(function(q){ var c = P(q[0], q[1]); out.push('<circle cx="' + f2(c[0]) + '" cy="' + f2(c[1]) + '" r="' + f2(70 / S) + '" fill="#fff" stroke="' + q[2] + '" stroke-width="0.45"/><circle cx="' + f2(c[0]) + '" cy="' + f2(c[1]) + '" r="0.5" fill="' + q[2] + '"/>'); });
+      TX(1690, 2150 + 120, 'extract fan', 1.7, CE, 'middle'); TX(2160, 2150 + 120, 'supply fan', 1.7, CS, 'middle');
+      [[1690, CE, 'exhaust to outside'], [2160, CS, 'intake from outside']].forEach(function(q){
+        LN(q[0], 1700, q[0], 1560, q[1], 0.6); TX(q[0], 1535, q[2], 1.9, q[1], 'middle', true); });
+      TX(1450, 1440, 'silenced runs to outside, 1 m+ apart (route TBC)', 1.9, '#555', 'start');
+      // supply: fan -> lined box -> grille near the hallway end of the dividing wall; extract: fan -> lined box -> far corner
+      var sx = Math.max(1500, Math.min(2350, sgx));
+      duct([[sx, 2150], [sgx, 2150], [sgx, sgy - 250]], CS);
+      vent(sgx, sgy, CS, 'SUPPLY 100 round', sgx, 'middle');
+      duct([[1450, 1925], [zone[0] + 130, 1925], [zone[0] + 130, egy - 650], [egx, egy - 650], [egx, egy - 250]], CE);
+      vent(egx, egy, CE, 'EXTRACT 100 round', egx + 270, 'start');
     }
     g.innerHTML = out.join('');
+    setViewBox(vbExt);
   }
   function wbInfoHTML(){
     var i = W.info;
     if (!W.sup) return '';
     if (!i) return 'Tick "Add dividing wall" to build the studio walls. Fan and ventilation can be shown on their own.';
     var a = (i.w * i.d / 1e6).toFixed(2);
-    return 'Dividing wall ' + Math.round(i.tD) + ' mm thick (bedroom face 2440 from the laundry wall, studio face ' + Math.round(i.yD) + ').<br>' +
-      'Added inside the studio: window wall ' + Math.round(i.tW) + ', ensuite wall ' + Math.round(i.tE) + ', living room wall ' + Math.round(i.tH) + ' (plus ' + Math.round(i.tO) + ' on the living-room side). Existing wall thicknesses are extra.<br>' +
+    return 'Plaster stripped ' + i.strip + ' from the studio side of the existing walls (window, ensuite, living room).<br>' +
+      'Dividing wall ' + Math.round(i.pD + i.tD) + ' mm thick (bedroom face 2440 from the laundry wall, studio face ' + Math.round(i.cy0) + ').<br>' +
+      'Added inside the studio, from the stripped faces: window wall ' + Math.round(i.tW) + ', ensuite wall ' + Math.round(i.tE) + ', living room wall ' + Math.round(i.tH) + ' (plus ' + Math.round(i.tO) + ' sheets on the living-room side).<br>' +
       '<b>Studio clear: ' + Math.round(i.w) + ' x ' + Math.round(i.d) + ' mm = ' + a + ' m²</b> (the kit fit check uses this).' +
-      (i.door ? '<br>Doorway: ' + WB.doorW + ' wide, ' + (i.door.n === 2 ? '2 doors (inner swings in, outer swings out)' : '1 door swinging in') + ', hinged on the ensuite side.' : '');
+      (i.door ? '<br>Doorway: ' + WB.doorW + ' wide, ' + (i.door.n === 2 ? '2 doors (inner swings in, outer swings out)' : '1 door swinging in') + ', hinged on the ensuite side.' : '') +
+      '<br>DL2 and H2 removed; P2 moved 200 toward the laundry wall (P3 is not changed).';
   }
   function getRef(){ return W.active ? W.ref : cur.ref; }
   function getEdges(){ return W.active ? W.edges : cur.edges; }
@@ -549,9 +651,10 @@
   function showPlan(name){
     var p = PLANS.filter(function(q){ return q.name === name; })[0] || PLANS[0];
     cur = p;
+    p.vb = [22 + (p.x0 - 72), 46 + (p.yTop - 79), 225, 286 - (p.yTop - 79)];
     $('baseplan').innerHTML = p.inner;
     var dx = p.x0 - 72, dy = p.yTop - 79;
-    svg.setAttribute('viewBox', (22+dx) + ' ' + (46+dy) + ' 225 ' + (286-dy));   // designs sit 8 lower on the page; trim so the title block stays out of view
+    setViewBox(false);
     $('divider').setAttribute('transform', 'translate(' + dx + ',' + dy + ')');
     if (p.kind === 'design') {
       var c = p.ref;
@@ -644,27 +747,9 @@
   }
   $('planPrev').addEventListener('click', function(){ step(-1); });
   $('planNext').addEventListener('click', function(){ step(1); });
-  $('btnAdd').addEventListener('click', function(){ $('fileAdd').click(); });
-  $('fileAdd').addEventListener('change', function(){
-    var files = Array.prototype.slice.call(this.files), input = this, pending = files.length, last = null, bad = [];
-    if (!pending) return;
-    files.forEach(function(f){
-      var rd = new FileReader();
-      rd.onload = function(){
-        var p = addEntry({ name: 'Loaded/' + f.name, svg: String(rd.result), loaded: true });
-        if (p) last = p; else bad.push(f.name);
-        if (--pending === 0) {
-          if (last) showPlan(last.name); else buildSelect(cur.name);
-          if (bad.length) $('planMsg').textContent = 'No room outline (clipPath id="room") found in: ' + bad.join(', ') + '. Only plans made by the Claude generators can be used.';
-        }
-      };
-      rd.readAsText(f);
-    });
-    input.value = '';
-  });
 
   // ---- start up ----
-  JSON.parse($('plans').textContent).forEach(addEntry);
+  JSON.parse($('plans').textContent).forEach(function(e){ if (/BASE PLAN v[23]/i.test(e.name) && !/archive/i.test(e.name)) addEntry(e); });   // picker offers BASE PLAN v2 and v3 only; everything else is set in the options
   var saved = null;
   try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e){}
   if (saved && isFinite(saved.x)) { st = saved; }
