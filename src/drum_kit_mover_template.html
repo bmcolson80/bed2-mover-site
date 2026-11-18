@@ -578,6 +578,7 @@
       var pp;
       pp = P(1577, 4027); hideNear(pp[0], pp[1], 7);
       pp = P(400, L - 1200); hideNear(pp[0], pp[1], 9);
+      pp = P(300, L); hideNear(pp[0], pp[1], 7);   // P3 removed too (power points to be planned later in an electrical plan)
       pp = P(0, 2546); hideNear(pp[0] + 3, pp[1], 6);
       var p2 = P(0, 2546 - 200), pc = [p2[0] + 1.7, p2[1]];
       out.push('<circle cx="' + f2(pc[0]) + '" cy="' + f2(pc[1]) + '" r="1.7" fill="white" stroke="#111" stroke-width="0.3"/>' +
@@ -642,7 +643,7 @@
       'Added inside the studio, from the stripped faces: window wall ' + Math.round(i.tW) + ', ensuite wall ' + Math.round(i.tE) + ', living room wall ' + Math.round(i.tH) + ' (plus ' + Math.round(i.tO) + ' sheets on the living-room side).<br>' +
       '<b>Studio clear: ' + Math.round(i.w) + ' x ' + Math.round(i.d) + ' mm = ' + a + ' m²</b> (the kit fit check uses this).' +
       (i.door ? '<br>Doorway: ' + WB.doorW + ' wide, ' + (i.door.n === 2 ? '2 doors (inner swings in, outer swings out)' : '1 door swinging in') + ', hinged on the ensuite side.' : '') +
-      '<br>DL2 and H2 removed; P2 moved 200 toward the laundry wall (P3 is not changed).';
+      '<br>DL2, H2 and P3 removed; P2 moved 200 toward the laundry wall (power points to come with the electrical plan).';
   }
   function getRef(){ return W.active ? W.ref : cur.ref; }
   function getEdges(){ return W.active ? W.edges : cur.edges; }
