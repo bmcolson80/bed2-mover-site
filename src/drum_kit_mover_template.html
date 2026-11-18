@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bed 2 – Drum kit positioning tool v3</title>
+<style>
+  :root { --ink:#1d2330; --muted:#5b6475; --line:#d9dde5; --accent:#2457c5; --bad:#c0392b; --ok:#1e8449; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, Helvetica, Arial, sans-serif; color:var(--ink); background:#f4f5f8; }
+  header { padding:10px 14px; background:#fff; border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; margin:0 0 2px; }
+  header p { margin:0; font-size:12px; color:var(--muted); }
+  .wrap { display:grid; grid-template-columns:1fr; gap:10px; padding:10px; }
+  @media (min-width: 900px) { .wrap { grid-template-columns: minmax(0,1fr) 340px; align-items:start; } }
+  .plan { background:#fff; border:1px solid var(--line); border-radius:8px; padding:4px; }
+  svg#plan { width:100%; height:auto; max-height:82vh; display:block; touch-action:none; user-select:none; -webkit-user-select:none; }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px; font-size:13px; }
+  .panel h2 { font-size:13px; margin:12px 0 6px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .panel h2:first-child { margin-top:0; }
+  .row { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:6px; }
+  label.f { display:flex; flex-direction:column; font-size:11px; color:var(--muted); gap:2px; flex:1; min-width:78px; }
+  input[type=number] { width:100%; padding:6px; font-size:14px; border:1px solid var(--line); border-radius:6px; }
+  select { padding:6px; font-size:13px; border:1px solid var(--line); border-radius:6px; }
+  button { padding:8px 10px; font-size:13px; border:1px solid var(--line); background:#f7f8fb; border-radius:6px; cursor:pointer; }
+  button:active { background:#e8ecf5; }
+  .status { padding:8px 10px; border-radius:6px; font-weight:600; margin-top:6px; }
+  .status.ok { background:#e6f4ea; color:var(--ok); }
+  .status.bad { background:#fdecea; color:var(--bad); }
+  .chk { display:flex; gap:6px; align-items:center; margin:4px 0; }
+  .small { font-size:11.5px; color:var(--muted); line-height:1.4; }
+  .warn { color:var(--bad); }
+  #kit { cursor: move; }
+  #handle { cursor: grab; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bed 2 – Drum kit positioning tool v3 (concept, unconfirmed)</h1>
+  <p>Pick any base plan or design underneath, then drag the shaded box to move it and the round handle to rotate. The kit keeps its position (mm from the window and back walls) when you switch plans, so you can compare. 1:25 when printed at A3.</p>
+</header>
+<div class="wrap">
+  <div class="plan">
+<svg id="plan" xmlns="http://www.w3.org/2000/svg" viewBox="22 46 225 286" font-family="Helvetica, Arial, sans-serif">
+<g id="baseplan"></g>
+<!-- ===== Overlay: Claude concept layers (not confirmed) ===== -->
+<g id="divider" style="pointer-events:none">
+  <line x1="72" y1="176.6" x2="191.28" y2="176.6" stroke="#1e8449" stroke-width="0.5" stroke-dasharray="3 1.5"/>
+  <text x="74" y="175.4" font-size="3" fill="#1e8449">dividing wall line (on the 200 step; thickness not confirmed)</text>
+  <text x="74" y="296.8" font-size="3.2" fill="#1e8449">STUDIO (back room)</text>
+</g>
+<g id="clearZone" style="pointer-events:none;display:none">
+  <rect id="clearRect" fill="#1e8449" fill-opacity="0.05" stroke="#1e8449" stroke-width="0.5" stroke-dasharray="3 1.5"/>
+  <text id="clearLbl" font-size="3" fill="#1e8449"></text>
+</g>
+<g id="halo" style="pointer-events:none"><rect id="haloRect" fill="none" stroke="#2457c5" stroke-width="0.35" stroke-dasharray="1.6 1.2" opacity="0.8"/></g>
+<g id="kit">
+  <rect id="kitRect" fill="#2457c5" fill-opacity="0.32" stroke="#2457c5" stroke-width="0.5"/>
+  <path id="arrow" fill="#2457c5" fill-opacity="0.8"/>
+  <g id="kitLblG"><text id="kitLbl" text-anchor="middle" font-size="3.6" font-weight="700" fill="#143a85">DRUM KIT</text>
+  <text id="kitDims" text-anchor="middle" font-size="3" fill="#143a85"></text></g>
+  <line id="stem" stroke="#2457c5" stroke-width="0.4"/>
+  <circle id="handle" r="3.2" fill="#fff" stroke="#2457c5" stroke-width="0.6"/>
+</g>
+</svg>
+  </div>
+  <div class="panel">
+    <h2>Underlying plan</h2>
+    <div class="row">
+      <button id="planPrev" title="Previous plan in the list">◀</button>
+      <select id="planSel" style="flex:1;min-width:0"></select>
+      <button id="planNext" title="Next plan in the list">▶</button>
+    </div>
+    <div class="row">
+      <button id="btnAdd">Add plan SVGs from files…</button>
+      <input type="file" id="fileAdd" accept=".svg,image/svg+xml" multiple style="display:none">
+    </div>
+    <div class="small" id="planNote"></div>
+    <div class="small warn" id="planMsg"></div>
+
+    <h2>Position (centre of box)</h2>
+    <div class="row">
+      <label class="f">mm from window wall<input type="number" id="inX" step="10"></label>
+      <label class="f">mm from back wall<input type="number" id="inY" step="10"></label>
+      <label class="f">angle (°)<input type="number" id="inA" step="1"></label>
+    </div>
+    <div class="status ok" id="status">…</div>
+    <div class="small" id="detail"></div>
+
+    <h2>Rotate</h2>
+    <div class="row">
+      <button data-rot="-90">−90°</button><button data-rot="-15">−15°</button><button data-rot="-5">−5°</button>
+      <button data-rot="5">+5°</button><button data-rot="15">+15°</button><button data-rot="90">+90°</button>
+    </div>
+    <div class="row"><button id="btnReset">Reset to studio centre</button><button id="btnCentreX">Centre across studio</button></div>
+
+    <h2>Kit size (mm)</h2>
+    <div class="row">
+      <label class="f">width<input type="number" id="inW" value="1900" step="50"></label>
+      <label class="f">depth<input type="number" id="inD" value="1600" step="50"></label>
+    </div>
+    <div class="small">Measured by Brendan on 15 Nov 2026: 1900 wide x 1600 deep. Enough to sit and play, not to walk around.</div>
+
+    <h2>Options</h2>
+    <label class="chk"><input type="checkbox" id="snapPos" checked> Snap position to 50 mm</label>
+    <label class="chk"><input type="checkbox" id="snapRot" checked> Snap rotation to 5°</label>
+    <label class="chk"><input type="checkbox" id="showHalo"> Show walkway zone, depth
+      <input type="number" id="inHalo" value="600" step="50" style="width:70px"> mm</label>
+    <label class="chk" style="margin-left:22px">on the side:
+      <select id="haloSide">
+        <option value="back" selected>behind the drummer (back of kit)</option>
+        <option value="front">in front (the way the arrow points)</option>
+        <option value="left">left of the arrow</option>
+        <option value="right">right of the arrow</option>
+      </select></label>
+    <label class="chk"><input type="checkbox" id="showDiv" checked> Show reference lines (dividing wall line on base plans, clear studio area on designs)</label>
+    <div class="small" style="margin-top:8px">
+      Keys (click the box first): arrows nudge 10 mm (Shift 100 mm); [ and ] rotate 1° (Shift 15°); R rotates 90°.<br>
+      The arrow inside the box marks which way the drummer faces, so you can see the throne side as you rotate.<br>
+      Position readouts are always measured from the existing window wall and back wall inner faces, so they match across plans. Clearances are to the box extents. The box is only a footprint (no riser, no door swing).
+    </div>
+  </div>
+</div>
+<script id="plans" type="application/json">__PLANS__</script>
+<script>
+(function(){
+  var S = 25;                                    // real mm per plan mm (1:25)
+  var $ = function(id){ return document.getElementById(id); };
+  var svg = $('plan');
+  // Studio clear area on each design = [x0, y0, x1, y1] in real mm from the window wall / laundry wall. Unconfirmed concept.
+  // New designs embed it in their SVG as <!-- studio-clear: x0,y0,x1,y1 --> (written by the generator, v5 onwards).
+  // Older SVGs without the marker use this table (values from running each generator).
+  var LEGACY_CLEAR = [
+    [/DESIGN v[12]( |\.|$)/, [166, 2722, 2761, 5361]],
+    [/DESIGN v[34]( |\.|$)/, [121, 2682, 2761, 5406]]
+  ];
+  var DEFAULT_CLEAR = [121, 2682, 2761, 5406];
+  function clearFor(entry){
+    var m = /<!--\s*studio-clear:\s*(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)\s*-->/.exec(entry.svg);
+    if (m) return [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]), parseFloat(m[4])];
+    for (var i = 0; i < LEGACY_CLEAR.length; i++) if (LEGACY_CLEAR[i][0].test(entry.name)) return LEGACY_CLEAR[i][1];
+    return DEFAULT_CLEAR;
+  }
+  var PLANS = [];                                // parsed plans
+  var cur = null;
+  var st = { x: 1555, y: 1545, a: 0, w: 1900, d: 1600, plan: '' };
+  var KEY = 'bed2-drumkit-v3';
+
+  function classify(name){
+    var base = /BASE PLAN|BASE plan/i.test(name), design = /DESIGN/i.test(name);
+    var arch = /archive/i.test(name);
+    var kind = design ? 'design' : 'base';
+    var group = arch ? 2 : (design ? 1 : 0);
+    return { kind: kind, group: group };
+  }
+  function labelOf(name){
+    var n = name.split('/').pop().replace(/\.svg$/i, '');
+    var isV1 = /BASE PLAN v1/.test(name);
+    n = n.replace(/^Bed2 /, '').replace(/ plan$/, '').replace(/^BASE plan/i, 'BASE PLAN').replace(/ - existing with services/, ' (existing + services)');
+    if (isV1 && !/v1/.test(n)) n = n.replace('BASE PLAN', 'BASE PLAN v1');
+    return n;
+  }
+  function parsePlan(entry){
+    var m = /<clipPath id="room">\s*<polygon points="([^"]+)"/.exec(entry.svg);
+    if (!m) return null;
+    var room = m[1].trim().split(/\s+/).map(function(s){ var a = s.split(','); return [parseFloat(a[0]), parseFloat(a[1])]; });
+    var xs = room.map(function(p){return p[0];}), ys = room.map(function(p){return p[1];});
+    var p = classify(entry.name);
+    p.name = entry.name; p.label = labelOf(entry.name); p.loaded = !!entry.loaded;
+    if (entry.loaded) p.group = 3;
+    p.room = room;
+    p.x0 = room[0][0]; p.yTop = room[0][1]; p.yBack = Math.max.apply(null, ys);   // first vertex = real (0,0), the window/back-wall corner
+    p.inner = entry.svg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '').replace(/<metadata[\s\S]*?<\/metadata>/g, '');
+    if (p.kind === 'design') {
+      var c = clearFor(entry);
+      p.ref = [[p.x0 + c[0]/S, p.yTop + c[1]/S], [p.x0 + c[2]/S, p.yTop + c[1]/S], [p.x0 + c[2]/S, p.yTop + c[3]/S], [p.x0 + c[0]/S, p.yTop + c[3]/S]];
+      p.edges = { win: p.ref[0][0], hall: p.ref[1][0], back: p.ref[2][1], front: p.ref[0][1] };
+      p.refName = 'studio clear area (' + (c[2]-c[0]) + ' x ' + (c[3]-c[1]) + ' mm)';
+    } else {
+      p.ref = room;
+      p.edges = { win: p.x0, hall: room[room.length-2][0], back: p.yBack, front: null };
+      p.refName = 'whole existing room outline';
+    }
+    return p;
+  }
+  function addEntry(entry){
+    var p = parsePlan(entry);
+    if (!p) return null;
+    PLANS = PLANS.filter(function(q){ return q.name !== p.name; });
+    PLANS.push(p);
+    PLANS.sort(function(a,b){ return a.group - b.group || b.label.localeCompare(a.label, undefined, {numeric: true}); });
+    return p;
+  }
+  var GROUPS = ['Existing conditions (base plan)', 'Designs (Claude concepts, unconfirmed)', 'Archive (superseded)', 'Loaded from file (not remembered after reload)'];
+  function buildSelect(selName){
+    var sel = $('planSel'); sel.innerHTML = '';
+    GROUPS.forEach(function(g, gi){
+      var items = PLANS.filter(function(p){ return p.group === gi; });
+      if (!items.length) return;
+      var og = document.createElement('optgroup'); og.label = g;
+      items.forEach(function(p){
+        var o = document.createElement('option'); o.value = p.name; o.textContent = p.label;
+        if (p.name === selName) o.selected = true;
+        og.appendChild(o);
+      });
+      sel.appendChild(og);
+    });
+  }
+
+  function norm(a){ a = a % 360; if (a > 180) a -= 360; if (a <= -180) a += 360; return a; }
+  function snapOn(id){ return $(id).checked; }
+  function cx(){ return cur.x0 + st.x / S; }
+  function cy(){ return cur.yBack - st.y / S; }
+
+  function corners(){
+    var hw = st.w/S/2, hd = st.d/S/2, r = st.a*Math.PI/180, c = Math.cos(r), s = Math.sin(r), X = cx(), Y = cy();
+    return [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]].map(function(p){ return [X + p[0]*c - p[1]*s, Y + p[0]*s + p[1]*c]; });
+  }
+  function pip(p, poly){
+    var inside = false;
+    for (var i=0,j=poly.length-1;i<poly.length;j=i++){
+      var xi=poly[i][0], yi=poly[i][1], xj=poly[j][0], yj=poly[j][1];
+      if (((yi>p[1])!=(yj>p[1])) && (p[0] < (xj-xi)*(p[1]-yi)/(yj-yi)+xi)) inside = !inside;
+    }
+    return inside;
+  }
+  function cross(a,b,c){ return (b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0]); }
+  function segInt(a,b,c,d){
+    var d1=cross(c,d,a), d2=cross(c,d,b), d3=cross(a,b,c), d4=cross(a,b,d);
+    return ((d1>0&&d2<0)||(d1<0&&d2>0)) && ((d3>0&&d4<0)||(d3<0&&d4>0));
+  }
+  function pSeg(p,a,b){
+    var dx=b[0]-a[0], dy=b[1]-a[1], l=dx*dx+dy*dy, t = l? ((p[0]-a[0])*dx+(p[1]-a[1])*dy)/l : 0;
+    t = Math.max(0, Math.min(1,t));
+    return Math.hypot(p[0]-(a[0]+t*dx), p[1]-(a[1]+t*dy));
+  }
+  function segDist(a,b,c,d){
+    if (segInt(a,b,c,d)) return 0;
+    return Math.min(pSeg(a,c,d), pSeg(b,c,d), pSeg(c,a,b), pSeg(d,a,b));
+  }
+  function analyse(){
+    var R = cur.ref, cs = corners(), allIn = cs.every(function(p){ return pip(p, R); }), cross_ = false, minD = Infinity;
+    for (var i=0;i<4;i++){
+      var a = cs[i], b = cs[(i+1)%4];
+      for (var j=0;j<R.length;j++){
+        var c = R[j], d = R[(j+1)%R.length];
+        if (segInt(a,b,c,d)) cross_ = true;
+        minD = Math.min(minD, segDist(a,b,c,d));
+      }
+    }
+    return { ok: allIn && !cross_, clear: minD*S };
+  }
+  function sideClear(){
+    var cs = corners(), e = cur.edges;
+    var minx = Math.min.apply(null, cs.map(function(p){return p[0];}));
+    var maxx = Math.max.apply(null, cs.map(function(p){return p[0];}));
+    var miny = Math.min.apply(null, cs.map(function(p){return p[1];}));
+    var maxy = Math.max.apply(null, cs.map(function(p){return p[1];}));
+    return { win: (minx-e.win)*S, hall: (e.hall-maxx)*S, back: (e.back-maxy)*S, front: e.front === null ? null : (miny-e.front)*S };
+  }
+
+  function render(){
+    var hw = st.w/S/2, hd = st.d/S/2, X = cx(), Y = cy();
+    var k = $('kit'); k.setAttribute('transform', 'translate('+X+','+Y+') rotate('+st.a+')');
+    var r = $('kitRect'); r.setAttribute('x',-hw); r.setAttribute('y',-hd); r.setAttribute('width',2*hw); r.setAttribute('height',2*hd);
+    var ah = Math.min(hd*0.5, 10), aw = Math.min(hw*0.18, 6);
+    $('arrow').setAttribute('d', 'M0 '+(-hd+1.5)+' L'+aw+' '+(-hd+1.5+ah)+' L'+(aw*0.35)+' '+(-hd+1.5+ah)+' L'+(aw*0.35)+' '+(-hd+1.5+ah*1.9)+' L'+(-aw*0.35)+' '+(-hd+1.5+ah*1.9)+' L'+(-aw*0.35)+' '+(-hd+1.5+ah)+' L'+(-aw)+' '+(-hd+1.5+ah)+' Z');
+    $('kitLblG').setAttribute('transform','rotate('+(-st.a)+')');
+    $('kitLbl').setAttribute('y', 0); $('kitDims').setAttribute('y', 4);
+    $('kitDims').textContent = st.w + ' x ' + st.d;
+    var hy = -hd - 8;
+    $('stem').setAttribute('x1',0); $('stem').setAttribute('y1',-hd); $('stem').setAttribute('x2',0); $('stem').setAttribute('y2',hy);
+    $('handle').setAttribute('cx',0); $('handle').setAttribute('cy',hy);
+    var halo = parseFloat($('inHalo').value)||0, hr = $('haloRect');
+    var hp = halo/S, side = $('haloSide').value, rx, ry, rw, rh;
+    if (side === 'back')       { rx=-hw; ry=hd;     rw=2*hw; rh=hp; }
+    else if (side === 'front') { rx=-hw; ry=-hd-hp; rw=2*hw; rh=hp; }
+    else if (side === 'left')  { rx=-hw-hp; ry=-hd; rw=hp; rh=2*hd; }
+    else                       { rx=hw; ry=-hd;     rw=hp; rh=2*hd; }
+    hr.setAttribute('x', rx); hr.setAttribute('y', ry); hr.setAttribute('width', rw); hr.setAttribute('height', rh);
+    hr.setAttribute('fill', '#2457c5'); hr.setAttribute('fill-opacity', '0.08');
+    hr.setAttribute('transform', 'translate('+X+','+Y+') rotate('+st.a+')');
+    $('halo').style.display = $('showHalo').checked ? '' : 'none';
+    var showRef = $('showDiv').checked, isD = cur.kind === 'design';
+    $('divider').style.display = (showRef && !isD) ? '' : 'none';
+    $('clearZone').style.display = (showRef && isD) ? '' : 'none';
+
+    var an = analyse(), sc = sideClear();
+    var col = an.ok ? '#2457c5' : '#c0392b';
+    r.setAttribute('fill', col); r.setAttribute('stroke', col); $('stem').setAttribute('stroke', col);
+    var s = $('status');
+    s.className = 'status ' + (an.ok ? 'ok' : 'bad');
+    var where = cur.kind === 'design' ? 'studio clear area' : 'room';
+    s.textContent = an.ok ? ('Fits: nearest wall ' + Math.round(an.clear) + ' mm') : ('Overlaps a wall / outside the ' + where);
+    $('detail').innerHTML = 'Checked against: ' + cur.refName + '.<br>Box edges: ' + Math.round(sc.win) + ' mm from window wall, ' + Math.round(sc.back) + ' mm from back wall, ' +
+      (sc.front === null ? '' : Math.round(sc.front) + ' mm from dividing wall, ') + Math.round(sc.hall) + ' mm from hallway-side wall.';
+    if (document.activeElement !== $('inX')) $('inX').value = Math.round(st.x);
+    if (document.activeElement !== $('inY')) $('inY').value = Math.round(st.y);
+    if (document.activeElement !== $('inA')) $('inA').value = Math.round(norm(st.a)*10)/10;
+    save();
+  }
+  function save(){ try { st.plan = cur.name; localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){} }
+
+  function showPlan(name){
+    var p = PLANS.filter(function(q){ return q.name === name; })[0] || PLANS[0];
+    cur = p;
+    $('baseplan').innerHTML = p.inner;
+    var dx = p.x0 - 72, dy = p.yTop - 79;
+    svg.setAttribute('viewBox', (22+dx) + ' ' + (46+dy) + ' 225 ' + (286-dy));   // designs sit 8 lower on the page; trim so the title block stays out of view
+    $('divider').setAttribute('transform', 'translate(' + dx + ',' + dy + ')');
+    if (p.kind === 'design') {
+      var c = p.ref;
+      $('clearRect').setAttribute('x', c[0][0]); $('clearRect').setAttribute('y', c[0][1]);
+      $('clearRect').setAttribute('width', c[1][0]-c[0][0]); $('clearRect').setAttribute('height', c[2][1]-c[1][1]);
+      $('clearLbl').setAttribute('x', c[0][0] + 2); $('clearLbl').setAttribute('y', c[0][1] - 1.2);
+      $('clearLbl').textContent = 'studio clear area (checked against)';
+    }
+    var note = p.kind === 'design'
+      ? 'Claude concept drawing, not confirmed by Brendan. The fit check uses the studio clear area (inside the new wall linings), not the old room outline.'
+      : 'Existing conditions, drawn unchanged. The fit check uses the whole existing room outline (no new walls).';
+    if (p.group === 2) note += ' Archived: superseded by a later version.';
+    $('planNote').textContent = note;
+    $('planMsg').textContent = '';
+    buildSelect(p.name);
+    render();
+  }
+
+  // ---- dragging ----
+  function toSvg(ev){
+    var pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+    return pt.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  function setFromPlanXY(px, py){
+    st.x = (px - cur.x0) * S; st.y = (cur.yBack - py) * S;
+    if (snapOn('snapPos')) { st.x = Math.round(st.x/50)*50; st.y = Math.round(st.y/50)*50; }
+  }
+  var mode = null, off = [0,0];
+  $('kit').addEventListener('pointerdown', function(ev){
+    ev.preventDefault();
+    var p = toSvg(ev);
+    mode = (ev.target.id === 'handle') ? 'rot' : 'move';
+    off = [cx() - p.x, cy() - p.y];
+    svg.setPointerCapture(ev.pointerId);
+  });
+  svg.addEventListener('pointermove', function(ev){
+    if (!mode) return;
+    var p = toSvg(ev);
+    if (mode === 'move') { setFromPlanXY(p.x + off[0], p.y + off[1]); }
+    else {
+      var a = Math.atan2(p.y - cy(), p.x - cx())*180/Math.PI + 90;
+      if (snapOn('snapRot')) a = Math.round(a/5)*5;
+      st.a = norm(a);
+    }
+    render();
+  });
+  function end(){ mode = null; }
+  svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+
+  // ---- inputs ----
+  function setFromInputs(){
+    var x = parseFloat($('inX').value), y = parseFloat($('inY').value), a = parseFloat($('inA').value);
+    if (isFinite(x)) st.x = x;
+    if (isFinite(y)) st.y = y;
+    if (isFinite(a)) st.a = norm(a);
+    render();
+  }
+  ['inX','inY','inA'].forEach(function(id){ $(id).addEventListener('change', setFromInputs); });
+  ['inW','inD'].forEach(function(id){ $(id).addEventListener('change', function(){
+    var w = parseFloat($('inW').value), d = parseFloat($('inD').value);
+    if (w>200) st.w = w; if (d>200) st.d = d; render(); }); });
+  ['inHalo','showHalo','showDiv','haloSide'].forEach(function(id){ $(id).addEventListener('change', render); $(id).addEventListener('input', render); });
+  document.querySelectorAll('[data-rot]').forEach(function(b){ b.addEventListener('click', function(){
+    st.a = norm(st.a + parseFloat(b.getAttribute('data-rot'))); render(); }); });
+  $('btnReset').addEventListener('click', function(){ st.x = 1555; st.y = 1545; st.a = 0; render(); });
+  $('btnCentreX').addEventListener('click', function(){
+    var e = cur.edges; st.x = ((e.win + e.hall)/2 - cur.x0) * S;
+    if (snapOn('snapPos')) st.x = Math.round(st.x/50)*50;
+    render(); });
+  window.addEventListener('keydown', function(ev){
+    if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    var step = ev.shiftKey ? 100 : 10, used = true;
+    if (ev.key === 'ArrowLeft') st.x -= step; else if (ev.key === 'ArrowRight') st.x += step;
+    else if (ev.key === 'ArrowUp') st.y += step; else if (ev.key === 'ArrowDown') st.y -= step;
+    else if (ev.key === '[') st.a = norm(st.a - (ev.shiftKey?15:1)); else if (ev.key === ']') st.a = norm(st.a + (ev.shiftKey?15:1));
+    else if (ev.key === 'r' || ev.key === 'R') st.a = norm(st.a + 90);
+    else used = false;
+    if (used) { ev.preventDefault(); render(); }
+  });
+
+  // ---- plan picker ----
+  $('planSel').addEventListener('change', function(){ showPlan(this.value); this.blur(); });
+  function step(dir){
+    var sel = $('planSel'), opts = Array.prototype.slice.call(sel.querySelectorAll('option'));
+    var i = opts.findIndex(function(o){ return o.value === cur.name; });
+    var n = opts[(i + dir + opts.length) % opts.length];
+    showPlan(n.value);
+  }
+  $('planPrev').addEventListener('click', function(){ step(-1); });
+  $('planNext').addEventListener('click', function(){ step(1); });
+  $('btnAdd').addEventListener('click', function(){ $('fileAdd').click(); });
+  $('fileAdd').addEventListener('change', function(){
+    var files = Array.prototype.slice.call(this.files), input = this, pending = files.length, last = null, bad = [];
+    if (!pending) return;
+    files.forEach(function(f){
+      var rd = new FileReader();
+      rd.onload = function(){
+        var p = addEntry({ name: 'Loaded/' + f.name, svg: String(rd.result), loaded: true });
+        if (p) last = p; else bad.push(f.name);
+        if (--pending === 0) {
+          if (last) showPlan(last.name); else buildSelect(cur.name);
+          if (bad.length) $('planMsg').textContent = 'No room outline (clipPath id="room") found in: ' + bad.join(', ') + '. Only plans made by the Claude generators can be used.';
+        }
+      };
+      rd.readAsText(f);
+    });
+    input.value = '';
+  });
+
+  // ---- start up ----
+  JSON.parse($('plans').textContent).forEach(addEntry);
+  var saved = null;
+  try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e){}
+  if (saved && isFinite(saved.x)) { st = saved; }
+  else {
+    // carry over the position remembered by mover v2 (plan coordinates on the base plan)
+    try { var old = JSON.parse(localStorage.getItem('bed2-drumkit-v2') || 'null');
+      if (old && isFinite(old.cx)) { st = { x: (old.cx-72)*S, y: (300.08-old.cy)*S, a: old.a||0, w: old.w||1900, d: old.d||1600, plan: '' }; } } catch(e){}
+  }
+  $('inW').value = st.w; $('inD').value = st.d;
+  var startName = st.plan, startPlan = PLANS.filter(function(p){ return p.name === startName; })[0];
+  if (!startPlan) startPlan = PLANS.filter(function(p){ return /BASE PLAN v2|BASE plan v2/.test(p.name) && p.group === 0; })[0] || PLANS[0];
+  showPlan(startPlan.name);
+})();
+</script>
+</body>
+</html>

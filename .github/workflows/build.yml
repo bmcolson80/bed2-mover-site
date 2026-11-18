@@ -1,0 +1,33 @@
+name: Build mover page
+
+# Rebuilds index.html whenever plan SVGs, the template or the build script change,
+# and commits it back to main so GitHub Pages (branch: main, folder: /) serves it.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "plans/**"
+      - "src/**"
+      - "build.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 build.py
+      - name: Commit rebuilt page
+        run: |
+          if git diff --quiet index.html; then
+            echo "index.html already up to date"
+          else
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git add index.html
+            git commit -m "Rebuild index.html from plans/"
+            git push
+          fi
