@@ -34,6 +34,14 @@
   #handle { cursor: grab; }
   .wb { border:1px solid var(--line); border-radius:6px; padding:6px 8px; margin:6px 0; }
   .wb b { font-size:12px; }
+  table.cost { width:100%; border-collapse:collapse; font-size:12px; margin-top:4px; }
+  table.cost th { text-align:left; font-weight:600; color:var(--muted); font-size:11px; padding:2px 3px; border-bottom:1px solid var(--line); }
+  table.cost td { padding:4px 3px; border-bottom:1px solid #eef0f4; vertical-align:top; }
+  table.cost th.r, table.cost td.r { text-align:right; white-space:nowrap; }
+  table.cost input { width:62px; padding:3px 4px; font-size:12px; text-align:right; }
+  table.cost tr.tot td { border-top:2px solid var(--ink); border-bottom:none; font-weight:700; font-size:14px; padding-top:7px; }
+  .costset { display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; margin-bottom:6px; }
+  #costDetail { margin-top:4px; }
 </style>
 </head>
 <body>
@@ -110,6 +118,33 @@
     <label class="chk"><input type="checkbox" id="wbVent"> Ventilation: 100 mm round supply and extract vents, 2 inline fans (as v4, ERV replaced)</label>
     <div class="small">Fan sizes from Fanco's spec sheet: blade diameter 1220, canopy 170, ceiling to lowest blade 270, ceiling to lowest part of the light 330 (CCT LED model). The 340 square lined well is carried over from the v4 design (unconfirmed). Vent positions and duct routes follow v4 and are placeholders: ducts go through the roof, airflow and silencers are not drawn. Positions move with the studio clear area.</div>
 
+
+    <h2>Cost estimate (concept, GST-inclusive)</h2>
+    <div class="small warn" id="costMsg"></div>
+    <div id="costBody">
+      <div class="costset">
+        <label class="f">wall height (mm)<input type="number" id="cH" step="10" min="1800"></label>
+        <label class="f">stud spacing (mm centres)<input type="number" id="cSp" step="50" min="300"></label>
+        <label class="f">Soundchek waste (%)<input type="number" id="cWS" step="1" min="0"></label>
+        <label class="f">timber waste (%)<input type="number" id="cWT" step="1" min="0"></label>
+        <label class="f">Rockwool waste (%)<input type="number" id="cWR" step="1" min="0"></label>
+      </div>
+      <table class="cost">
+        <thead><tr><th>Material</th><th class="r">Qty</th><th class="r">Unit $</th><th class="r">Cost</th></tr></thead>
+        <tbody>
+          <tr><td>Soundchek 3000 x 1200 x 13 mm sheet (3.6 m²)</td><td class="r" id="qSheet"></td><td class="r"><input type="number" id="pSheet" step="0.01" min="0"></td><td class="r" id="kSheet"></td></tr>
+          <tr><td>90 x 35 structural pine (per lineal metre)</td><td class="r" id="qTimber"></td><td class="r"><input type="number" id="pTimber" step="0.01" min="0"></td><td class="r" id="kTimber"></td></tr>
+          <tr><td>Rockwool Safe n Silent Pro 350, R2.55 90 mm (pack of 3)</td><td class="r" id="qRock"></td><td class="r"><input type="number" id="pRock" step="0.01" min="0"></td><td class="r" id="kRock"></td></tr>
+          <tr><td>Consumables (Bunnings): screws, sealant, jointing compound, tape</td><td class="r" id="qCons">1 lot</td><td class="r">est.</td><td class="r" id="kCons"></td></tr>
+          <tr id="rDoor"><td>Door leaves (enter a price)</td><td class="r" id="qDoor"></td><td class="r"><input type="number" id="pDoor" step="0.01" min="0"></td><td class="r" id="kDoor"></td></tr>
+          <tr id="rFan"><td>Inline fans (enter a price)</td><td class="r" id="qFan"></td><td class="r"><input type="number" id="pFan" step="0.01" min="0"></td><td class="r" id="kFan"></td></tr>
+          <tr class="tot"><td colspan="3">Estimated total</td><td class="r" id="kTotal"></td></tr>
+        </tbody>
+      </table>
+      <div class="small" id="costNote" style="margin-top:6px"></div>
+      <div class="row" style="margin-top:6px"><button id="costReset">Reset prices and settings</button></div>
+      <details style="margin-top:6px"><summary class="small" style="cursor:pointer">How the quantities are worked out</summary><div class="small" id="costDetail"></div></details>
+    </div>
 
     <h2>Position (centre of box)</h2>
     <div class="row">
@@ -354,7 +389,7 @@
   }
   var WB = defWB();
   try { var svWB = JSON.parse(localStorage.getItem(WB_KEY) || 'null'); if (svWB) WB = mergeWB(defWB(), svWB); } catch(e){}
-  var W = { sup: false, active: false, ref: null, edges: null, name: '', info: null };
+  var W = { sup: false, active: false, ref: null, edges: null, name: '', info: null, geo: null };
   var WALLS = [
     { k: 'div', title: 'Dividing wall (from the laundry end)', outer: 'Soundchek, bedroom (laundry) side' },
     { k: 'win', title: 'Window wall', outer: null },
@@ -513,8 +548,8 @@
     var g = $('walls');
     restoreServices();
     W.sup = !!cur && /BASE PLAN v[234]/i.test(cur.name) && cur.group === 0 && !cur.loaded;
-    W.active = false; W.ref = null; W.edges = null; W.info = null;
-    if (!W.sup) { g.innerHTML = ''; if (cur) setViewBox(false); return; }
+    W.active = false; W.ref = null; W.edges = null; W.info = null; W.geo = null;
+    if (!W.sup) { g.innerHTML = ''; if (cur) setViewBox(false); updateCosts(); return; }
     var x0 = cur.x0, yT = cur.yTop, WT = 112, YS = 2440, YSB = YS + WT, XSTEP = 2777;
     var L = Math.round((cur.yBack - yT) * S), XH = Math.round((cur.edges.hall - x0) * S);
     function P(x, y){ return [x0 + x / S, yT + y / S]; }
@@ -625,6 +660,7 @@
       W.ref = [P(cx0, cy0), P(cx1, cy0), P(cx1, cy1), P(cx0, cy1)];
       W.edges = { win: P(cx0, 0)[0], hall: P(cx1, 0)[0], back: P(0, cy1)[1], front: P(0, cy0)[1] };
       W.name = 'studio clear area from the wall builder (' + Math.round(cx1 - cx0) + ' x ' + Math.round(cy1 - cy0) + ' mm)';
+      W.geo = { L: L, YS: YS, YSB: YSB, xW: xW, xH: xH, yEf: yEf, yDo: yDo, cy1: cy1, yEndLiv: yEndLiv };
       W.info = { stepOn: stepOn, pD: pD, tD: SD.t, tW: SW.t, tH: SH.t, tE: SE.t, tO: tO, w: cx1 - cx0, d: cy1 - cy0, yDo: yDo, cy0: cy0, door: door, strip: strip };
       out.push('<g id="wbClearG"><rect x="' + f2(P(cx0, cy0)[0]) + '" y="' + f2(P(cx0, cy0)[1]) + '" width="' + f2((cx1 - cx0) / S) + '" height="' + f2((cy1 - cy0) / S) +
         '" fill="#1e8449" fill-opacity="0.05" stroke="#1e8449" stroke-width="0.4" stroke-dasharray="3 1.5"/>');
@@ -706,6 +742,7 @@
     }
     g.innerHTML = out.join('');
     setViewBox(vbExt);
+    updateCosts();
   }
   function wbInfoHTML(){
     var i = W.info;
@@ -814,6 +851,112 @@
     if (used) { ev.preventDefault(); render(); }
   });
 
+  // ---- cost estimate (concept, unconfirmed): quantities come from the wall builder state above ----
+  var COST_KEY = 'bed2-costs-v1';
+  function defCost(){ return { h: 2420, sp: 600, wS: 10, wT: 10, wR: 0, pSheet: 74, pTimber: 4, pRock: 107.32, pDoor: '', pFan: '' }; }
+  var COST = defCost();
+  try { var svC = JSON.parse(localStorage.getItem(COST_KEY) || 'null'); if (svC) { for (var ck in svC) { if (ck in COST) COST[ck] = svC[ck]; } } } catch(e){}
+  var CID = { h: 'cH', sp: 'cSp', wS: 'cWS', wT: 'cWT', wR: 'cWR', pSheet: 'pSheet', pTimber: 'pTimber', pRock: 'pRock', pDoor: 'pDoor', pFan: 'pFan' };
+  function writeCostUI(){ for (var k in CID) $(CID[k]).value = COST[k]; }
+  function readCostUI(){
+    var d = defCost();
+    ['h', 'sp'].forEach(function(k){ var v = parseFloat($(CID[k]).value); COST[k] = (isFinite(v) && v > 0) ? v : d[k]; });
+    ['wS', 'wT', 'wR'].forEach(function(k){ var v = parseFloat($(CID[k]).value); COST[k] = (isFinite(v) && v >= 0) ? v : d[k]; });
+    ['pSheet', 'pTimber', 'pRock', 'pDoor', 'pFan'].forEach(function(k){ var v = parseFloat($(CID[k]).value); COST[k] = (isFinite(v) && v >= 0) ? v : ''; });
+    try { localStorage.setItem(COST_KEY, JSON.stringify(COST)); } catch(e){}
+  }
+  function aud(v){ return v.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' }); }
+  function cdiv(a, b){ return Math.ceil(a / b - 1e-9); }
+  function sheetLayers(layers){ var mm = 0; layers.forEach(function(l){ if (l.t === 'sheet') mm += l.mm; }); return Math.round(mm / WB.sheet); }
+  function hasStudLayer(layers){ return layers.some(function(l){ return l.t === 'stud'; }); }
+  function baysOf(segs, sp){ var n = 0; segs.forEach(function(sg){ if (sg > 0) n += cdiv(sg, sp); }); return n; }
+  // Lengths are measured between the existing stud faces (after the plaster strip), so corner overlaps are not deducted (the waste % covers them).
+  function costQuantities(){
+    var G = W.geo, H = COST.h, sp = COST.sp, PL = 35, DH = 2050;
+    var lenD = G.xH - G.xW, lenW = G.yEf - G.yDo, lenE = G.xH - G.xW, lenH = G.yEf - G.yDo;
+    var door = !!WB.liv.door, yh = G.cy1 - WB.doorOff, yl = yh - WB.doorW;
+    var livSegs = door ? [yl - G.yDo, G.yEf - yh] : [lenH];
+    var winSegs = [(G.L - 2734) - G.yDo, G.yEf - (G.L - 364)];     // existing window wall studs either side of window 1
+    var walls = [
+      { name: 'Dividing wall', len: lenD, outer: WB.div.outer, layers: innerLayers(WB.div), base: [lenD], second: [lenD], newBase: true, step: 205 },
+      { name: 'Window wall', len: lenW, outer: 0, layers: innerLayers(WB.win), base: winSegs, second: [lenW], newBase: false },
+      { name: 'Ensuite wall', len: lenE, outer: 0, layers: innerLayers(WB.ens), base: [lenE], second: [lenE], newBase: false },
+      { name: 'Living room wall', len: lenH, outer: WB.liv.outer, layers: innerLayers(WB.liv), base: livSegs, second: livSegs, newBase: false, door: door, outLen: G.yEndLiv - G.YSB }
+    ];
+    var Q = { area: 0, finish: 0, bays: 0, studs: 0, lm: 0, bead: 0, lines: [] };
+    walls.forEach(function(w){
+      var nIn = sheetLayers(w.layers), nOut = w.outer || 0, sec = hasStudLayer(w.layers);
+      var ded = w.door ? WB.doorW * DH / 1e6 : 0;
+      var faceIn = w.len * H / 1e6 - ded, faceOut = (w.outLen || w.len) * H / 1e6 - ded;
+      var area = nIn * faceIn + nOut * faceOut + (w.step ? nOut * w.step * H / 1e6 : 0);
+      var bayBase = baysOf(w.base, sp), bayTwo = sec ? baysOf(w.second, sp) : 0;
+      var newWalls = (w.newBase ? 1 : 0) + (sec ? 1 : 0), lm = 0, studs = 0;
+      for (var i = 0; i < newWalls; i++) { var n = cdiv(w.len, sp) + 1; studs += n; lm += (n * (H - 2 * PL) + 3 * w.len) / 1000; }
+      if (w.door) { var sets = 1 + (sec ? 1 : 0); lm += sets * (2 * (DH + PL) + 2 * (WB.doorW + 140)) / 1000; studs += sets * 2; }
+      var bead = (nIn + nOut) * 2 * (w.len + H) / 1000 + newWalls * 2 * w.len / 1000;
+      Q.area += area; Q.finish += (nIn > 0 ? faceIn : 0) + (nOut > 0 ? faceOut : 0);
+      Q.bays += bayBase + bayTwo; Q.studs += studs; Q.lm += lm; Q.bead += bead;
+      Q.lines.push('<b>' + w.name + '</b>: ' + Math.round(w.len) + ' mm long; Soundchek layers ' + nIn + ' studio side' + (w.outer || w.name === 'Dividing wall' ? ' + ' + nOut + ' other side' : '') +
+        (w.door ? ' (doorway ' + WB.doorW + ' x ' + DH + ' deducted from each layer)' : '') + ' = ' + area.toFixed(1) + ' m²; Rockwool bays ' + bayBase + (sec ? ' + ' + bayTwo + ' (second stud wall)' : '') +
+        (newWalls ? '; new stud wall' + (newWalls > 1 ? 's' : '') + ': ' + studs + ' studs' : '') + (w.door ? ' incl. doorway framing' : '') + '.');
+    });
+    var perBay = cdiv(H - 2 * PL, 1200), batts = Q.bays * perBay;
+    var battsW = Math.ceil(batts * (1 + COST.wR / 100) - 1e-9), packs = cdiv(battsW, 3);
+    var areaW = Q.area * (1 + COST.wS / 100), sheets = Math.ceil(areaW / 3.6 - 1e-9);
+    var lmR = Math.ceil(Q.lm * (1 + COST.wT / 100) * 10 - 1e-9) / 10;
+    var cons = [
+      { n: 'plasterboard screws 6g x 32 mm, 1000 pack (15 a m²)', q: cdiv(areaW * 15, 1000), p: 18.18 },
+      { n: 'batten screws 14g x 75 mm, 500 pack (6 a stud)', q: Q.studs > 0 ? cdiv(Q.studs * 6, 500) : 0, p: 62.65 },
+      { n: 'acoustic sealant 600 mL (about 21 m of 6 mm bead)', q: cdiv(Q.bead, 21), p: 20.54 },
+      { n: 'Gyprock Base Coat 60, 20 kg (1 bag a 50 m² finished)', q: cdiv(Q.finish, 50), p: 53.90 },
+      { n: 'Gyprock Jointmaster Topping, 20 kg (1 bag a 50 m² finished)', q: cdiv(Q.finish, 50), p: 57.00 },
+      { n: 'paper jointing tape 75 m (1.5 m a m² finished)', q: cdiv(Q.finish * 1.5, 75), p: 6.51 }
+    ];
+    var consSub = 0; cons.forEach(function(c){ consSub += c.q * c.p; });
+    var dbl = door && /^g/.test(WB.liv.inner) && WB.liv.second;
+    return { Q: Q, perBay: perBay, batts: batts, battsW: battsW, packs: packs, areaW: areaW, sheets: sheets, lmR: lmR,
+      cons: cons, consSub: consSub, consTotal: consSub * 1.15, doors: door ? (dbl ? 2 : 1) : 0, fans: WB.vent ? 2 : 0, H: H, sp: sp };
+  }
+  function updateCosts(){
+    readCostUI();
+    var body = $('costBody'), msg = $('costMsg');
+    if (!W.sup) { msg.textContent = 'Costs work with the wall builder on BASE PLAN v2, v3 or v4. Pick one of those plans.'; body.style.display = 'none'; return; }
+    if (!WB.on || !W.geo) { msg.textContent = 'Tick "Add dividing wall" to price the walls.'; body.style.display = 'none'; return; }
+    msg.textContent = ''; body.style.display = '';
+    var R = costQuantities(), total = 0, unpriced = [];
+    function price(k){ return (typeof COST[k] === 'number') ? COST[k] : null; }
+    function line(qId, kId, qTxt, qty, pk, name){
+      $(qId).textContent = qTxt;
+      var p = price(pk);
+      if (qty <= 0) { $(kId).textContent = ''; return; }
+      if (p === null) { $(kId).textContent = 'price needed'; unpriced.push(name); return; }
+      $(kId).textContent = aud(qty * p); total += qty * p;
+    }
+    line('qSheet', 'kSheet', R.sheets + ' sheets', R.sheets, 'pSheet', 'Soundchek');
+    line('qTimber', 'kTimber', R.lmR.toFixed(1) + ' lm', R.lmR, 'pTimber', 'timber');
+    line('qRock', 'kRock', R.packs + ' packs (' + R.battsW + ' batts)', R.packs, 'pRock', 'Rockwool');
+    $('kCons').textContent = aud(R.consTotal); total += R.consTotal;
+    $('rDoor').style.display = R.doors ? '' : 'none'; $('rFan').style.display = R.fans ? '' : 'none';
+    line('qDoor', 'kDoor', R.doors + (R.doors === 1 ? ' leaf' : ' leaves'), R.doors, 'pDoor', 'door leaves');
+    line('qFan', 'kFan', R.fans + ' fans', R.fans, 'pFan', 'inline fans');
+    $('kTotal').textContent = aud(total);
+    var notes = [];
+    if (unpriced.length) notes.push('Not in the total yet (no price entered): ' + unpriced.join(', ') + '.');
+    if (WB.stud !== 90) notes.push('<span class="warn">Stud depth is ' + WB.stud + ' mm but the Rockwool is priced as the 90 mm pack: choose batts to match.</span>');
+    notes.push('Not costed: ceiling fan (already owned), electrician, ducting and silencers, window 1 plug, ceiling and roof work, hidden-door hardware and seals, floor, skirting and paint. Prices are the ones Brendan gave on 22 Nov 2026 (Soundchek, timber, Rockwool) and Bunnings prices on 22 Nov 2026 (consumables, +15%). Whole sheets and packs are bought, so the cost jumps in steps.');
+    $('costNote').innerHTML = notes.join('<br>');
+    var d = R.Q.lines.slice();
+    d.push('Total Soundchek area ' + R.Q.area.toFixed(1) + ' m² + ' + COST.wS + '% = ' + R.areaW.toFixed(1) + ' m² ÷ 3.6 = ' + (R.areaW / 3.6).toFixed(2) + ', so ' + R.sheets + ' sheets.');
+    d.push('Rockwool: ' + R.Q.bays + ' bays at ' + R.sp + ' centres x ' + R.perBay + ' batts (cavity ' + (R.H - 70) + ' ÷ 1200) = ' + R.batts + ' batts' + (COST.wR ? ' + ' + COST.wR + '% = ' + R.battsW : '') + ', ÷ 3 per pack = ' + R.packs + ' packs. Existing window wall studs are counted only beside window 1; the doorway bays are left out.');
+    d.push('Timber: new stud walls (the dividing wall and any second stud wall) = studs (length ÷ ' + R.sp + ', rounded up, + 1) x (' + R.H + ' − 70) + top and bottom plates + one row of noggins, plus doorway framing (2 trimmers and a doubled head); ' + R.Q.lm.toFixed(1) + ' lm + ' + COST.wT + '% = ' + R.lmR.toFixed(1) + ' lm. Existing studs are reused, so they cost nothing.');
+    d.push('<b>Consumables</b> (Bunnings, GST-inclusive):');
+    R.cons.forEach(function(c){ if (c.q > 0) d.push('&nbsp;&nbsp;' + c.q + ' x ' + aud(c.p) + ' ' + c.n + ' = ' + aud(c.q * c.p)); });
+    d.push('&nbsp;&nbsp;Subtotal ' + aud(R.consSub) + ' + 15% for sandpaper, blades and odds = ' + aud(R.consTotal) + '. Based on ' + R.Q.finish.toFixed(1) + ' m² of finished faces, ' + R.Q.bead.toFixed(0) + ' m of sealant bead and ' + R.Q.studs + ' new studs. Use 41 mm screws where two layers of board are stacked; no resilient mounts are priced.');
+    $('costDetail').innerHTML = d.join('<br>');
+  }
+  ['cH', 'cSp', 'cWS', 'cWT', 'cWR', 'pSheet', 'pTimber', 'pRock', 'pDoor', 'pFan'].forEach(function(i){ $(i).addEventListener('input', updateCosts); });
+  $('costReset').addEventListener('click', function(){ COST = defCost(); writeCostUI(); updateCosts(); });
+
   // ---- plan picker ----
   $('planSel').addEventListener('change', function(){ showPlan(this.value); this.blur(); });
   function step(dir){
@@ -839,6 +982,7 @@
   var startName = st.plan, startPlan = PLANS.filter(function(p){ return p.name === startName; })[0];
   if (!startPlan) startPlan = PLANS.filter(function(p){ return /BASE PLAN v2|BASE plan v2/.test(p.name) && p.group === 0; })[0] || PLANS[0];
   writeWbUI();
+  writeCostUI();
   showPlan(startPlan.name);
 })();
 </script>

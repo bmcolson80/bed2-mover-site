@@ -26,6 +26,11 @@ documents.
   window 1 position); a new base plan with different geometry needs those checked in `drawWalls()`.
 - Match plan names case-insensitively (the files are named "BASE plan v2").
 
+## Cost estimate (22 Nov 2026)
+- The panel "Cost estimate" (in `src/drum_kit_mover_template.html`: `costQuantities()` and `updateCosts()`) turns the wall builder state into materials and costs: Soundchek sheets, 90 x 35 pine (lineal metres), Rockwool packs, one Bunnings consumables line, and door leaves / inline fans (price blank until entered). It updates whenever the walls, doorway or ventilation options change, and shows the total underneath.
+- Settings and prices are editable in the panel and kept in the browser (`bed2-costs-v1`). Defaults: wall height 2420, stud spacing 600, waste 10% sheets and timber, 0% Rockwool. Prices are generic product prices only: no house details in this public repo.
+- Quantities use stud-face to stud-face lengths, one batt per 600 bay per 1200 of height, existing studs reused (only new stud walls are priced), whole sheets and packs. Unconfirmed concept numbers, like the rest of the tool.
+
 ## Adding a design
 1. SVG named `Bed2 DESIGN vN plan.svg`, in `plans/Bed2 DESIGN/` (superseded ones move to `plans/Bed2 DESIGN/archive/`).
 2. It must contain `<clipPath id="room"><polygon points="...">` or the build skips it, and should end with
