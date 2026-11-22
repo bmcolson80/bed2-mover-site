@@ -583,7 +583,6 @@
       R(sA, YS, sB, YS + WB.sheet * WB.div.outer, FILL.sheet);
       LN(sA, YSB - sp, sE, YSB - sp, '#b22', 0.2, '1 0.8');
       if (sE > sB) LN(sB, YS, sE, YS, '#2a6', 0.3, '1.2 0.8');                     // face inside the wardrobe: plaster kept
-      TX(sA + 60, YSB + 190, 'wardrobe end wall: plaster stripped, not inside the wardrobe', 1.7, '#b22', 'start');
       // 3. every wall's inner layers, painted gap first then stud then sheets; strips run corner to corner so the gaps join
       var strips = [];
       var o = 0; SW.layers.forEach(function(l){ strips.push({ t: l.t, k: 'W', a: xW + o, b: xW + o + l.mm }); o += l.mm; });
