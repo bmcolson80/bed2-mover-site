@@ -5,6 +5,11 @@ https://bmcolson80.github.io/bed2-mover-site/ (GitHub Pages, branch `main`, fold
 commit house details (including the address) beyond the plan SVGs, and never commit context files, credentials or
 documents.
 
+## Before any build or change (rule set by Brendan, 22 Nov 2026)
+- Sync with GitHub first, every time, before editing the template or plans or running `build.py`: `git fetch origin && git status -sb`. GitHub is the source of truth: website uploads, the Actions workflow and other sessions can change `main` while the local clone lags, and building on a stale copy overwrites newer work.
+- If the clone is behind: clean tree, run `git pull --rebase`; uncommitted edits, run `git stash push -u`, pull, then `git stash pop`. Never `git reset --hard` or discard local edits without Brendan's say-so (stash instead).
+- After publishing, check the local clone matches (`git diff origin/main` is empty). If a lock or deletion error appears, say so; do not work around it.
+
 ## How it works
 - `plans/` holds the plan SVGs. They mirror the layout of the `Studio Build` folder on Brendan's Mac. The path
   matters: a path containing `archive` is grouped as Archive, `BASE PLAN` as existing conditions, `DESIGN` as designs.
