@@ -573,18 +573,17 @@
       }
       Dr(YS, YS + WB.sheet * WB.div.outer, FILL.sheet, xW, xH);
       Dr(YS + WB.sheet * WB.div.outer, yDo, FILL.stud, xW, xH);
-      // 2b. the wardrobe end wall the dividing wall butts into (the 205 'step' section, x XH to 2982, y 2440 to 2552):
-      //     no longer grey. Plaster stripped on both faces: the bedroom face so the new sheets match the thickness of the
-      //     dividing wall's outer leaf, the other (living-room) face so Rockwool can be fitted between the studs.
-      var stepOn = XH < 2982 - 1, stepB = 2982;
-      if (stepOn) {
-        var sp = Math.min(strip, WT / 2 - 1);
-        R(XH, YS, stepB, YSB, FILL.stud);
-        if (sp > 0) { R(XH, YS, stepB, YS + sp, ROOMC, false); R(XH, YSB - sp, stepB, YSB, ROOMC, false); }
-        R(XH, YS, stepB, YS + WB.sheet * WB.div.outer, FILL.sheet);
-        LN(XH, YSB - sp, stepB, YSB - sp, '#b22', 0.2, '1 0.8');
-        TX(XH + 60, YSB + 190, 'wardrobe end wall: plaster stripped both sides', 1.7, '#b22', 'start');
-      }
+      // 2b. the wardrobe end wall the dividing wall butts into (y 2440 to 2552). Never grey: drawn as stud with plaster stripped.
+      //     x 2777 to 2982 is the 205 'step' outside the wardrobe: stripped on both faces (bedroom face so the new sheets match the
+      //     thickness of the dividing wall's outer leaf, other face for Rockwool access). x 2982 to the moved hallway wall (BASE PLAN
+      //     v3/v4 only) is the wall under the wardrobe: only its studio-side face (y 2552) is stripped, NEVER its face inside the wardrobe.
+      var stepOn = true, sA = XSTEP, sB = 2982, sE = Math.max(sB, XH), sp = Math.min(strip, WT / 2 - 1);
+      R(sA, YS, sE, YSB, FILL.stud);
+      if (sp > 0) { R(sA, YS, sB, YS + sp, ROOMC, false); R(sA, YSB - sp, sE, YSB, ROOMC, false); }
+      R(sA, YS, sB, YS + WB.sheet * WB.div.outer, FILL.sheet);
+      LN(sA, YSB - sp, sE, YSB - sp, '#b22', 0.2, '1 0.8');
+      if (sE > sB) LN(sB, YS, sE, YS, '#2a6', 0.3, '1.2 0.8');                     // face inside the wardrobe: plaster kept
+      TX(sA + 60, YSB + 190, 'wardrobe end wall: plaster stripped, not inside the wardrobe', 1.7, '#b22', 'start');
       // 3. every wall's inner layers, painted gap first then stud then sheets; strips run corner to corner so the gaps join
       var strips = [];
       var o = 0; SW.layers.forEach(function(l){ strips.push({ t: l.t, k: 'W', a: xW + o, b: xW + o + l.mm }); o += l.mm; });
@@ -719,7 +718,7 @@
       'Added inside the studio, from the stripped faces: window wall ' + Math.round(i.tW) + ', ensuite wall ' + Math.round(i.tE) + ', living room wall ' + Math.round(i.tH) + ' (plus ' + Math.round(i.tO) + ' sheets on the living-room side).<br>' +
       '<b>Studio clear: ' + Math.round(i.w) + ' x ' + Math.round(i.d) + ' mm = ' + a + ' m²</b> (the kit fit check uses this).' +
       (i.door ? '<br>Doorway: ' + WB.doorW + ' wide, ' + (i.door.n === 2 ? '2 doors (inner swings in, outer swings out)' : '1 door swinging in') + ', hinged on the ensuite side.' : '') +
-      (i.stepOn ? '<br>Wardrobe end wall (the 205 step the dividing wall butts into): shown as stud, no longer grey. Plaster stripped ' + i.strip + ' on the bedroom face (so the new sheets match the thickness of the dividing wall) and on the living-room face (access to line with Rockwool).' : '') +
+      (i.stepOn ? '<br>Wardrobe end wall (the 205 step the dividing wall butts into): shown as stud, no longer grey. Plaster stripped ' + i.strip + ' on the bedroom face (so the new sheets match the thickness of the dividing wall) and on the other face (access to line with Rockwool). The plaster inside the wardrobe is left alone.' : '') +
       '<br>DL2, H2 and P3 removed; P2 moved 200 toward the laundry wall (power points to come with the electrical plan).';
   }
   function getRef(){ return W.active ? W.ref : cur.ref; }
