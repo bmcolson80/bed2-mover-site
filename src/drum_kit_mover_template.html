@@ -743,7 +743,7 @@
       ? 'Claude concept drawing, not confirmed by Brendan. The fit check uses the studio clear area (inside the new wall linings), not the old room outline.'
       : 'Existing conditions, drawn unchanged. The fit check uses the whole existing room outline (no new walls) until you add walls in "Studio walls" below.';
     if (/BASE PLAN v3/i.test(p.name)) note = 'OPTION, not the existing room (BASE PLAN v2 is today). Hallway wall moved out 300 into the living room. Claude concept, not confirmed by Brendan. The fit check uses the whole room outline of this option.';
-    if (/BASE PLAN v4/i.test(p.name)) note = 'OPTION, not the existing room (BASE PLAN v2 is today). Hallway wall moved out 600 into the living room, no 95 return at the step (one straight 253 run to the wardrobe wall). Claude concept, not confirmed by Brendan. The fit check uses the whole room outline of this option.';
+    if (/BASE PLAN v4/i.test(p.name)) note = 'OPTION, not the existing room (BASE PLAN v2 is today). Hallway wall moved out 600 into the living room; the 205 x 223 nib at the wardrobe end is kept. Claude concept, not confirmed by Brendan. The fit check uses the whole room outline of this option.';
     if (p.group === 2) note += ' Archived: superseded by a later version.';
     $('planNote').textContent = note;
     $('planMsg').textContent = '';
